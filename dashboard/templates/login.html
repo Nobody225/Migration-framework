@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orange Cloud Migration — Connexion</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:#1A1A2E;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+.login-wrap{width:100%;max-width:420px;padding:24px;}
+
+/* Logo zone */
+.logo-zone{text-align:center;margin-bottom:32px;}
+.logo-img{width:64px;height:64px;border-radius:14px;object-fit:cover;margin-bottom:14px;}
+.logo-brand{color:white;font-size:22px;font-weight:700;margin-bottom:4px;}
+.logo-sub{color:rgba(255,255,255,0.4);font-size:13px;}
+
+/* Card */
+.login-card{background:#FFFFFF;border-radius:14px;padding:32px 28px;}
+.card-title{font-size:17px;font-weight:700;color:#1F2937;margin-bottom:6px;}
+.card-sub{font-size:13px;color:#6B7280;margin-bottom:24px;}
+
+/* Form */
+.fg{margin-bottom:16px;}
+.fg label{display:block;font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;}
+.fg input{width:100%;padding:10px 13px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:14px;color:#1F2937;outline:none;transition:border-color 0.15s,box-shadow 0.15s;background:#F9FAFB;}
+.fg input:focus{border-color:#FF6600;box-shadow:0 0 0 3px rgba(255,102,0,0.12);background:#fff;}
+
+/* Password toggle */
+.pw-wrap{position:relative;}
+.pw-wrap input{padding-right:44px;}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:16px;padding:4px;}
+.pw-toggle:hover{color:#6B7280;}
+
+/* Error */
+.error-box{background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:11px 14px;margin-bottom:16px;font-size:13px;color:#DC2626;display:none;}
+.error-box.show{display:block;}
+
+/* Change-password panel (hidden by default) */
+.change-pwd-panel{display:none;}
+.change-pwd-panel.show{display:block;}
+.main-form.hide{display:none;}
+
+/* Info box */
+.info-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 14px;margin-bottom:16px;font-size:13px;color:#1D4ED8;}
+
+/* Submit btn */
+.btn-login{width:100%;padding:11px;background:#FF6600;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;margin-top:4px;}
+.btn-login:hover{background:#CC5200;}
+.btn-login:active{transform:scale(0.98);}
+.btn-login:disabled{opacity:0.6;cursor:default;}
+
+/* Password strength */
+.pwd-strength{margin-top:6px;height:3px;border-radius:2px;background:#E5E7EB;overflow:hidden;}
+.pwd-fill{height:100%;border-radius:2px;transition:width 0.3s,background 0.3s;width:0;}
+.pwd-hint{font-size:11px;color:#9CA3AF;margin-top:4px;}
+
+/* Footer */
+footer{margin-top:28px;text-align:center;}
+.footer-restricted{display:inline-flex;align-items:center;gap:7px;background:rgba(255,102,0,0.15);border:1px solid rgba(255,102,0,0.3);color:#FF6600;padding:4px 14px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.5px;}
+.footer-copy{color:rgba(255,255,255,0.3);font-size:11px;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="logo-zone">
+    <img src="/static/dashboard/orange-logo.jpeg" alt="Orange" class="logo-img">
+    <div class="logo-brand">Orange Group</div>
+    <div class="logo-sub">Cloud Migration Platform</div>
+  </div>
+
+  <div class="login-card">
+    <!-- Erreur générale -->
+    <div class="error-box" id="err-box"></div>
+
+    <!-- FORM PRINCIPAL : LOGIN -->
+    <div class="main-form" id="main-form">
+      <div class="card-title">Connexion</div>
+      <div class="card-sub">Entrez vos identifiants de plateforme</div>
+
+      <div class="fg">
+        <label>Identifiant</label>
+        <input type="text" id="inp-login" placeholder="Ex: j.dupont ou Gos_Cloud" autocomplete="username">
+      </div>
+
+      <div class="fg">
+        <label>Mot de passe</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-password" placeholder="••••••••" autocomplete="current-password">
+          <button class="pw-toggle" onclick="togglePwd('inp-password',this)" type="button">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-login" id="btn-login" onclick="doLogin()">Se connecter</button>
+    </div>
+
+    <!-- PANEL : CHANGEMENT MOT DE PASSE OBLIGATOIRE -->
+    <div class="change-pwd-panel" id="change-panel">
+      <div class="card-title">Changement de mot de passe requis</div>
+      <div class="info-box" style="margin-top:8px;">
+        C'est votre première connexion ou votre administrateur a réinitialisé votre mot de passe. Vous devez définir un nouveau mot de passe avant de continuer.
+      </div>
+
+      <div class="fg">
+        <label>Mot de passe actuel</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-cur-pwd" placeholder="••••••••">
+          <button class="pw-toggle" onclick="togglePwd('inp-cur-pwd',this)" type="button">👁</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Nouveau mot de passe</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-new-pwd" placeholder="Min. 8 car., maj., chiffre, spécial" oninput="checkStrength(this.value)">
+          <button class="pw-toggle" onclick="togglePwd('inp-new-pwd',this)" type="button">👁</button>
+        </div>
+        <div class="pwd-strength"><div class="pwd-fill" id="pwd-fill"></div></div>
+        <div class="pwd-hint" id="pwd-hint">Au moins 8 caractères, 1 majuscule, 1 chiffre, 1 caractère spécial</div>
+      </div>
+
+      <div class="fg">
+        <label>Confirmer le nouveau mot de passe</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-confirm-pwd" placeholder="••••••••">
+          <button class="pw-toggle" onclick="togglePwd('inp-confirm-pwd',this)" type="button">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-login" id="btn-change" onclick="doChangePwd()">Définir le nouveau mot de passe</button>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-restricted">🔒 ORANGE RESTRICTED</div>
+    <div class="footer-copy">© 2025 Orange S.A. — Migration Framework v2.0</div>
+  </footer>
+</div>
+
+<script>
+let _token = null;
+
+// ── Entrée clavier ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    if(document.getElementById('change-panel').classList.contains('show')) doChangePwd();
+    else doLogin();
+  }
+});
+
+// ── Login ──────────────────────────────────────────────────────
+async function doLogin(){
+  const login = document.getElementById('inp-login').value.trim();
+  const pwd   = document.getElementById('inp-password').value;
+  if(!login || !pwd){ showErr('Identifiant et mot de passe requis'); return; }
+
+  setLoading('btn-login', true);
+  hideErr();
+
+  try{
+    const r = await fetch('/api/v1/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ login, password: pwd }),
+    });
+    const d = await r.json();
+
+    if(!r.ok){ showErr(d.error || 'Erreur de connexion'); setLoading('btn-login', false); return; }
+
+    _token = d.token;
+    sessionStorage.setItem('auth_token', _token);
+    sessionStorage.setItem('current_user', JSON.stringify(d.user));
+
+    if(d.must_change_password){
+      showChangePanel();
+    } else {
+      window.location.href = '/';
+    }
+  } catch(e){
+    showErr('Erreur réseau — serveur injoignable');
+  }
+  setLoading('btn-login', false);
+}
+
+// ── Changement mot de passe ────────────────────────────────────
+async function doChangePwd(){
+  const cur  = document.getElementById('inp-cur-pwd').value;
+  const nw   = document.getElementById('inp-new-pwd').value;
+  const conf = document.getElementById('inp-confirm-pwd').value;
+
+  if(!cur || !nw || !conf){ showErr('Tous les champs sont requis'); return; }
+  if(nw !== conf){ showErr('Les mots de passe ne correspondent pas'); return; }
+  if(cur === nw){ showErr('Le nouveau mot de passe doit être différent de l\'ancien'); return; }
+
+  setLoading('btn-change', true);
+  hideErr();
+
+  try{
+    const r = await fetch('/api/v1/auth/change-password', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+_token,
+      },
+      body: JSON.stringify({ current_password: cur, new_password: nw }),
+    });
+    const d = await r.json();
+    if(!r.ok){ showErr(d.error || 'Erreur'); setLoading('btn-change', false); return; }
+
+    // Update stored user
+    const u = JSON.parse(sessionStorage.getItem('current_user') || '{}');
+    u.must_change_password = false;
+    sessionStorage.setItem('current_user', JSON.stringify(u));
+    window.location.href = '/';
+  } catch(e){
+    showErr('Erreur réseau');
+  }
+  setLoading('btn-change', false);
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function showChangePanel(){
+  document.getElementById('main-form').classList.add('hide');
+  document.getElementById('change-panel').classList.add('show');
+  hideErr();
+}
+
+function showErr(msg){
+  const b = document.getElementById('err-box');
+  b.textContent = msg;
+  b.classList.add('show');
+}
+function hideErr(){ document.getElementById('err-box').classList.remove('show'); }
+
+function setLoading(id, loading){
+  const b = document.getElementById(id);
+  b.disabled = loading;
+  b.textContent = loading ? 'Connexion…' : (id === 'btn-login' ? 'Se connecter' : 'Définir le nouveau mot de passe');
+}
+
+function togglePwd(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(inp.type === 'password'){ inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function checkStrength(pwd){
+  const fill = document.getElementById('pwd-fill');
+  const hint = document.getElementById('pwd-hint');
+  let score = 0;
+  if(pwd.length >= 8)  score++;
+  if(/[A-Z]/.test(pwd)) score++;
+  if(/[0-9]/.test(pwd)) score++;
+  if(/[^A-Za-z0-9]/.test(pwd)) score++;
+  const pct  = score * 25;
+  const colors = ['#EF4444','#F59E0B','#F59E0B','#10B981','#10B981'];
+  const labels = ['Très faible','Faible','Moyen','Fort','Très fort'];
+  fill.style.width = pct + '%';
+  fill.style.background = colors[score] || '#E5E7EB';
+  hint.textContent = labels[score] || '';
+  hint.style.color = colors[score] || '#9CA3AF';
+}
+
+// Rediriger si déjà connecté
+const tok = sessionStorage.getItem('auth_token');
+if(tok){
+  fetch('/api/v1/auth/me', { headers:{ 'Authorization':'Bearer '+tok } })
+    .then(r => { if(r.ok) window.location.href = '/'; })
+    .catch(() => {});
+}
+</script>
+</body>
+</html>

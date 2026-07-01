@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orange Cloud Migration Platform</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --or:#FF6600;--or-d:#CC5200;--or-p:#FFF0E6;
+  --bg:#F4F5F7;--white:#FFFFFF;
+  --sb:#1A1A2E;--sb-b:rgba(255,255,255,0.07);
+  --nav-a:rgba(255,102,0,0.13);
+  --tx:#1F2937;--tx2:#6B7280;--tx3:#9CA3AF;
+  --bd:#E5E7EB;
+  --gr:#10B981;--re:#EF4444;--am:#F59E0B;
+  --bl:#3B82F6;--pu:#8B5CF6;--tl:#14B8A6;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tx);display:flex;flex-direction:column;min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;}
+.layout{display:flex;flex:1;min-height:0;}
+
+/* SIDEBAR */
+.sb{width:248px;background:var(--sb);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sb-top{padding:14px 16px 12px;border-bottom:1px solid var(--sb-b);}
+.sb-logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;transition:opacity 0.15s;}
+.sb-logo:hover{opacity:0.85;}
+.sb-logo img{width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;}
+.sb-brand{color:white;font-size:15px;font-weight:700;line-height:1.15;}
+.sb-sub{color:rgba(255,255,255,0.38);font-size:10px;}
+.nb{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.52);font-size:13px;font-weight:500;transition:all 0.13s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
+.nb:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);}
+.nb.act{background:var(--nav-a);color:var(--or);}
+.nb svg{width:15px;height:15px;flex-shrink:0;opacity:0.7;}
+.nb.act svg{opacity:1;}
+.nb-badge{margin-left:auto;background:var(--or);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;display:none;line-height:1.4;}
+.nav-sec{padding:12px 10px 4px;}
+.nav-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.25);padding:0 8px;margin-bottom:5px;}
+.sb-footer{margin-top:auto;}
+.sb-user{padding:12px 14px;border-top:1px solid var(--sb-b);display:flex;align-items:center;gap:9px;}
+.ua{width:30px;height:30px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;}
+.un{font-size:12px;color:rgba(255,255,255,0.82);font-weight:600;}
+.ur{font-size:10px;color:rgba(255,255,255,0.3);}
+.cdot{width:7px;height:7px;border-radius:50%;background:var(--re);margin-left:auto;transition:background 0.3s;flex-shrink:0;}
+.cdot.on{background:var(--gr);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{background:var(--white);border-bottom:1px solid var(--bd);padding:0 22px;height:52px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50;}
+.tb-back{background:none;border:1px solid var(--bd);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:13px;color:var(--tx2);display:flex;align-items:center;gap:5px;transition:all 0.13s;flex-shrink:0;}
+.tb-back:hover{background:var(--bg);color:var(--tx);}
+.tb-back:disabled{opacity:0.3;cursor:default;}
+.tb-fwd{background:none;border:1px solid var(--bd);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:13px;color:var(--tx2);display:flex;align-items:center;gap:5px;transition:all 0.13s;flex-shrink:0;}
+.tb-fwd:hover{background:var(--bg);color:var(--tx);}
+.tb-fwd:disabled{opacity:0.3;cursor:default;}
+.tb-title{font-size:15px;font-weight:700;flex:1;}
+.tb-title span{color:var(--tx2);font-weight:400;font-size:13px;margin-left:6px;}
+.tb-r{display:flex;align-items:center;gap:8px;}
+.content{padding:20px 24px;flex:1;overflow-y:auto;}
+.page{display:none;animation:fadeIn 0.18s ease;}.page.act{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* STATS */
+.sg{display:grid;gap:12px;margin-bottom:18px;}
+.sg6{grid-template-columns:repeat(6,minmax(0,1fr));}
+.sg4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.sg3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.sc{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);padding:14px 16px;border-left:4px solid transparent;}
+.sc.or{border-left-color:var(--or);} .sc.gr{border-left-color:var(--gr);}
+.sc.bl{border-left-color:var(--bl);} .sc.pu{border-left-color:var(--pu);}
+.sc.tl{border-left-color:var(--tl);} .sc.am{border-left-color:var(--am);}
+.sc.re{border-left-color:var(--re);}
+.sc-lbl{font-size:10px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px;}
+.sc-val{font-size:22px;font-weight:800;line-height:1;color:var(--tx);}
+.sc-sub{font-size:11px;color:var(--tx3);margin-top:4px;}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:16px;}
+.chd{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;}
+.ctitle{font-size:13px;font-weight:700;flex:1;}
+.cbd{padding:14px 16px;}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px;}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px;}
+
+/* BUTTONS */
+.btn{padding:6px 13px;border-radius:7px;border:1px solid var(--bd);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.13s;background:var(--white);color:var(--tx);}
+.btn:hover{background:var(--bg);}
+.btn:active{transform:scale(0.97);}
+.btn:disabled{opacity:0.4;cursor:default;pointer-events:none;}
+.btn-or{background:var(--or);color:white;border-color:var(--or-d);}
+.btn-or:hover{background:var(--or-d);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+.btn-danger{background:#FEF2F2;color:var(--re);border-color:#FECACA;}
+.btn-ok{background:#F0FDF4;color:var(--gr);border-color:#BBF7D0;}
+.btn-info{background:#EFF6FF;color:var(--bl);border-color:#BFDBFE;}
+.btn-warn{background:#FFFBEB;color:#D97706;border-color:#FDE68A;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;}
+.badge.pending{background:#F3F4F6;color:#6B7280;}.badge.pending::before{background:#9CA3AF;}
+.badge.b-ok{background:#F0FDF4;color:#059669;}.badge.b-ok::before{background:var(--gr);}
+.badge.b-err{background:#FEF2F2;color:#DC2626;}.badge.b-err::before{background:var(--re);}
+.badge.b-warn{background:#FFFBEB;color:#D97706;}.badge.b-warn::before{background:var(--am);}
+.badge.running,.badge.extracting,.badge.converting,.badge.deploying,.badge.evaluating,.badge.optimizing{background:#EFF6FF;color:#2563EB;}
+.badge.running::before,.badge.extracting::before,.badge.converting::before,
+.badge.deploying::before,.badge.evaluating::before,.badge.optimizing::before{background:var(--bl);animation:blink 1s infinite;}
+.badge.completed{background:#F0FDF4;color:#059669;}.badge.completed::before{background:var(--gr);}
+.badge.failed{background:#FEF2F2;color:#DC2626;}.badge.failed::before{background:var(--re);}
+.badge.stopped,.badge.rolled_back{background:#FFFBEB;color:#D97706;}.badge.stopped::before,.badge.rolled_back::before{background:var(--am);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+.tpill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;}
+.tpill.redhat{background:#FEF2F2;color:#B91C1C;}
+.tpill.huawei{background:#FFFBEB;color:#92400E;}
+.tpill.custom{background:#F5F3FF;color:#5B21B6;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);background:var(--bg);border-bottom:1px solid var(--bd);font-weight:600;}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--bd);font-size:13px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#FAFAFA;}
+.mono{font-family:'Courier New',monospace;font-size:12px;color:var(--tx2);}
+
+/* SCORE BAR */
+.sbar{display:flex;align-items:center;gap:6px;min-width:110px;}
+.str{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.sfill{height:100%;border-radius:3px;transition:width 0.6s;}
+
+/* OPENSTACK STATUS CARD */
+.os-card{border:1px solid var(--bd);border-radius:9px;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--white);transition:box-shadow 0.15s;}
+.os-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.07);}
+.os-hd{display:flex;align-items:center;gap:10px;}
+.os-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.os-icon.redhat{background:#FEF2F2;}
+.os-icon.huawei{background:#FFFBEB;}
+.os-icon.custom{background:#F5F3FF;}
+.os-name{font-size:13px;font-weight:700;}
+.os-url{font-size:11px;color:var(--tx3);font-family:monospace;}
+.os-status-row{display:flex;align-items:center;justify-content:space-between;}
+.os-ping{font-size:11px;color:var(--tx2);}
+.os-quota{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px;}
+.oq-item{background:var(--bg);border-radius:6px;padding:6px 8px;}
+.oq-lbl{font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;}
+.oq-bar{height:4px;background:var(--bd);border-radius:2px;overflow:hidden;margin:3px 0;}
+.oq-fill{height:100%;border-radius:2px;}
+.oq-txt{font-size:10px;color:var(--tx2);}
+
+/* VCENTER CARD */
+.vc-card{border:1px solid var(--bd);border-radius:9px;padding:14px;background:var(--white);transition:box-shadow 0.15s;}
+.vc-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.07);}
+.vc-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.vc-icon{width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.vc-name{font-size:13px;font-weight:700;}
+.vc-host{font-size:11px;color:var(--tx3);font-family:monospace;}
+.vc-status{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+
+/* PERF COMPARISON */
+.perf-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);}
+.perf-row:last-child{border-bottom:none;}
+.perf-metric{width:130px;font-size:12px;font-weight:600;}
+.perf-bars{flex:1;display:flex;flex-direction:column;gap:3px;}
+.pbr{display:flex;align-items:center;gap:6px;}
+.pb-lbl{width:68px;font-size:10px;color:var(--tx3);text-align:right;}
+.pb-track{flex:1;height:7px;background:var(--bg);border-radius:4px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:4px;transition:width 0.8s;}
+.pb-val{width:58px;font-size:11px;font-weight:700;text-align:right;}
+.perf-delta{width:58px;text-align:center;}
+.dp{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;}
+.dp-up{background:#F0FDF4;color:#059669;}
+.dp-dn{background:#FEF2F2;color:#DC2626;}
+.dp-fl{background:#F3F4F6;color:#6B7280;}
+
+/* TIMELINE */
+.timeline{display:flex;align-items:center;margin:12px 0;}
+.tl-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.tl-step:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--bd);z-index:0;}
+.tl-step.done::after{background:var(--gr);}
+.tl-step.active::after{background:linear-gradient(90deg,var(--or),var(--bd));}
+.tl-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--bd);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;z-index:1;position:relative;}
+.tl-step.done .tl-dot{background:var(--gr);border-color:var(--gr);color:white;}
+.tl-step.active .tl-dot{background:var(--or);border-color:var(--or);color:white;animation:pdot 1.5s infinite;}
+.tl-step.err .tl-dot{background:var(--re);border-color:var(--re);color:white;}
+.tl-lbl{font-size:10px;color:var(--tx2);margin-top:4px;font-weight:600;}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(255,102,0,0.4)}50%{box-shadow:0 0 0 6px rgba(255,102,0,0)}}
+
+/* FORM */
+.fr{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
+.fg input,.fg select{background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:7px 10px;border-radius:7px;font-size:13px;outline:none;}
+.fg input:focus,.fg select:focus{border-color:var(--or);box-shadow:0 0 0 3px var(--or-p);}
+
+/* MCHIP */
+.mchip{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;}
+.mc-lbl{font-size:10px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
+.mc-val{font-size:18px;font-weight:800;color:var(--tx);margin-top:2px;line-height:1;}
+.mc-sub{font-size:11px;color:var(--tx3);margin-top:2px;}
+
+/* CHART */
+.cwrap{position:relative;height:185px;}
+
+/* MODAL */
+.mbk{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;}
+.mbk.open{display:flex;}
+.modal{background:var(--white);border-radius:12px;width:580px;max-width:95vw;border:1px solid var(--bd);}
+.modal.lg{width:680px;}
+.mhd{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.mtitle{font-size:14px;font-weight:700;}
+.mclose{background:none;border:none;cursor:pointer;font-size:22px;color:var(--tx2);line-height:1;padding:0 3px;}
+.mbd{padding:16px 18px;max-height:72vh;overflow-y:auto;}
+.mft{padding:11px 18px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px;}
+
+/* LOG */
+.logbox{max-height:300px;overflow-y:auto;font-family:'Courier New',monospace;font-size:12px;line-height:1.8;background:#FAFAFA;border-radius:8px;padding:10px 12px;}
+.ll{padding:1px 0;}
+.lt{color:var(--tx3);margin-right:5px;}
+.lm{color:var(--pu);margin-right:5px;}
+.ll.ERROR .le{color:var(--re);font-weight:600;}
+.ll.WARNING .le{color:var(--am);}
+.ll.INFO .le{color:var(--tx);}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);padding:11px 16px;font-size:13px;max-width:360px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.08);transform:translateY(70px);opacity:0;transition:all 0.26s;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{border-left:3px solid var(--gr);}
+#toast.error{border-left:3px solid var(--re);}
+#toast.info{border-left:3px solid var(--or);}
+
+/* FOOTER */
+footer{background:var(--sb);color:rgba(255,255,255,0.45);font-size:11px;padding:9px 22px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sb-b);flex-shrink:0;}
+.fl{display:flex;align-items:center;gap:8px;}
+.fl img{width:26px;height:26px;border-radius:5px;object-fit:cover;}
+.fc{flex:1;text-align:center;}
+.fc-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(255,102,0,0.15);border:1px solid rgba(255,102,0,0.3);color:var(--or);padding:3px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:0.5px;}
+.fr2{text-align:right;}
+
+@media(max-width:860px){.sg6,.sg4,.sg3,.g2,.g3{grid-template-columns:1fr;}.sb{width:52px;}.sb-brand,.sb-sub,.nb span,.un,.ur,.nav-lbl{display:none;}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sb">
+  <div class="sb-top">
+    <!-- Logo cliquable → recharge la page dashboard -->
+    <a class="sb-logo" href="#" onclick="logoClick(event)">
+      <img src="/static/dashboard/orange-logo.jpeg" alt="Orange">
+      <div>
+        <div class="sb-brand">Orange</div>
+        <div class="sb-sub">Cloud Migration Platform</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="nav-sec">
+    <div class="nav-lbl">Navigation</div>
+    <button class="nb" id="nb-dashboard" onclick="nav('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nb" id="nb-infra" onclick="nav('infra')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      <span>Infrastructure</span>
+    </button>
+    <button class="nb" id="nb-projects" onclick="nav('projects')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span>Projets</span>
+    </button>
+    <button class="nb" id="nb-migrate" onclick="nav('migrate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <span>Nouvelle migration</span>
+    </button>
+    <button class="nb" id="nb-jobs" onclick="nav('jobs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span>Jobs de migration</span>
+      <span class="nb-badge" id="nb-run">0</span>
+    </button>
+  </div>
+
+  <div class="nav-sec">
+    <div class="nav-lbl">Post-migration</div>
+    <button class="nb" id="nb-instances" onclick="nav('instances')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span>Instances migrées</span>
+    </button>
+    <button class="nb" id="nb-perf" onclick="nav('perf')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Performances</span>
+    </button>
+    <button class="nb" id="nb-timing" onclick="nav('timing')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Temps de migration</span>
+    </button>
+  </div>
+
+  <div class="nav-sec">
+    <div class="nav-lbl">Système</div>
+    <button class="nb" id="nb-logs" onclick="nav('logs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      <span>Logs &amp; Audit</span>
+    </button>
+    <button class="nb" id="nb-admin" onclick="nav('admin')" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Gestion des accès</span>
+    </button>
+    <button class="nb" id="nb-admin" onclick="nav('admin')" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Gestion des accès</span>
+    </button>
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="ua">AD</div>
+      <div><div class="un">Admin</div><div class="ur">Cloud Architect</div></div>
+      <div class="cdot" id="cdot"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR avec boutons nav navigateur -->
+  <div class="topbar">
+    <button class="tb-back" id="btn-back" onclick="historyBack()" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      Retour
+    </button>
+    <button class="tb-fwd" id="btn-fwd" onclick="historyFwd()" disabled>
+      Suivant
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div class="tb-title" id="ptitle">Dashboard <span>Vue d'ensemble</span></div>
+    <div class="tb-r">
+      <span id="clbl" style="font-size:12px;color:var(--tx3);">Connexion…</span>
+      <button class="btn btn-sm" onclick="refreshAll()">↻ Actualiser</button>
+      <button class="btn btn-or btn-sm" onclick="nav('migrate')">+ Migration</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- PAGE: DASHBOARD -->
+    <div class="page act" id="page-dashboard">
+      <div class="sg sg6">
+        <div class="sc or"><div class="sc-lbl">Total</div><div class="sc-val" id="s-total">0</div><div class="sc-sub">migrations</div></div>
+        <div class="sc gr"><div class="sc-lbl">Réussies</div><div class="sc-val" id="s-ok">0</div><div class="sc-sub" id="s-rate">0%</div></div>
+        <div class="sc bl"><div class="sc-lbl">Score moyen</div><div class="sc-val" id="s-score">—</div><div class="sc-sub">/100</div></div>
+        <div class="sc pu"><div class="sc-lbl">Instances</div><div class="sc-val" id="s-inst">0</div><div class="sc-sub">actives OS</div></div>
+        <div class="sc tl"><div class="sc-lbl">Durée moy.</div><div class="sc-val" id="s-dur">—</div><div class="sc-sub">par migration</div></div>
+        <div class="sc am"><div class="sc-lbl">En cours</div><div class="sc-val" id="s-running">0</div><div class="sc-sub">jobs actifs</div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="chd"><span class="ctitle">Statuts des migrations</span></div><div class="cbd"><div class="cwrap"><canvas id="c-status"></canvas></div></div></div>
+        <div class="card"><div class="chd"><span class="ctitle">Scores performance /100</span></div><div class="cbd"><div class="cwrap"><canvas id="c-perf"></canvas></div></div></div>
+      </div>
+      <div class="card">
+        <div class="chd"><span class="ctitle">Dernières migrations</span><button class="btn btn-sm" onclick="nav('jobs')">Tout voir →</button></div>
+        <div style="overflow-x:auto;" id="recent-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Aucune migration</div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: INFRASTRUCTURE — Découverte dynamique -->
+    <div class="page" id="page-infra">
+
+      <div class="g2">
+
+        <!-- ══ Wizard vCenter ══ -->
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="chd">
+              <span class="ctitle">Ajouter un vCenter</span>
+              <span style="font-size:11px;color:var(--tx3);">Découverte en 3 étapes</span>
+            </div>
+            <div class="cbd">
+
+              <!-- Étape 1: IP -->
+              <div id="vc-step1">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--or);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">1</span>
+                  Adresse du vCenter
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                  <div class="fg" style="flex:1;"><label>IP ou FQDN</label><input type="text" id="vc-host" placeholder="192.168.1.10 ou vcenter.domaine.local"></div>
+                  <div class="fg"><label>Port</label><input type="number" id="vc-port" value="443" style="width:80px;"></div>
+                </div>
+                <button class="btn btn-info" onclick="pingVC()">Tester la connectivité →</button>
+                <div id="vc-ping-result" style="margin-top:8px;font-size:12px;"></div>
+              </div>
+
+              <!-- Étape 2: Credentials -->
+              <div id="vc-step2" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--bl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">2</span>
+                  Authentification vSphere
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Utilisateur</label><input type="text" id="vc-user" placeholder="administrator@vsphere.local"></div>
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Mot de passe</label>
+                    <div style="position:relative;">
+                      <input type="password" id="vc-pwd" placeholder="••••••••" style="width:100%;padding-right:36px;">
+                      <button onclick="togglePwdField('vc-pwd')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;">👁</button>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-info" onclick="testVCAuth()">Tester l'authentification →</button>
+                <div id="vc-auth-result" style="margin-top:8px;font-size:12px;"></div>
+              </div>
+
+              <!-- Étape 3: Nommage + Save -->
+              <div id="vc-step3" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--tl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">3</span>
+                  Nommer la connexion
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Nom affiché</label><input type="text" id="vc-name" placeholder="vCenter Production"></div>
+                  <div class="fg" style="flex:1;"><label>Datacenter</label><input type="text" id="vc-dc" placeholder="Datacenter"></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="vc-ssl" style="accent-color:var(--or);"> Vérifier certificat SSL
+                  </label>
+                </div>
+                <button class="btn btn-or" onclick="saveVC()">Enregistrer ce vCenter</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- vCenters enregistrés -->
+          <div class="card">
+            <div class="chd"><span class="ctitle">vCenters enregistrés</span><button class="btn btn-sm" onclick="loadConnections()">↻</button></div>
+            <div id="vc-saved-list" style="min-height:60px;">
+              <div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Aucun vCenter enregistré</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ Wizard OpenStack ══ -->
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="chd">
+              <span class="ctitle">Ajouter un OpenStack</span>
+              <span style="font-size:11px;color:var(--tx3);">Découverte en 3 étapes</span>
+            </div>
+            <div class="cbd">
+
+              <!-- Étape 1: URL Keystone -->
+              <div id="os-step1">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--or);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">1</span>
+                  URL Keystone
+                </div>
+                <div class="fg" style="margin-bottom:10px;">
+                  <label>URL d'authentification</label>
+                  <input type="text" id="os-url" placeholder="http://192.168.10.100:5000/v3">
+                </div>
+                <button class="btn btn-info" onclick="pingOS()">Tester la connectivité →</button>
+                <div id="os-ping-result" style="margin-top:8px;font-size:12px;"></div>
+              </div>
+
+              <!-- Étape 2: Credentials -->
+              <div id="os-step2" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--bl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">2</span>
+                  Authentification Keystone
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Projet / Tenant</label><input type="text" id="os-project" placeholder="migration-project"></div>
+                  <div class="fg" style="flex:1;"><label>Utilisateur</label><input type="text" id="os-user" placeholder="migration-svc"></div>
+                </div>
+                <div class="fg" style="margin-bottom:8px;">
+                  <label>Mot de passe</label>
+                  <div style="position:relative;">
+                    <input type="password" id="os-pwd" placeholder="••••••••" style="width:100%;padding-right:36px;">
+                    <button onclick="togglePwdField('os-pwd')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;">👁</button>
+                  </div>
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Domaine utilisateur</label><input type="text" id="os-udomain" value="Default"></div>
+                  <div class="fg" style="flex:1;"><label>Région</label><input type="text" id="os-region" value="RegionOne"></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="os-ssl" style="accent-color:var(--or);"> Vérifier SSL
+                  </label>
+                </div>
+                <button class="btn btn-info" onclick="testOSAuth()">Tester l'authentification →</button>
+                <div id="os-auth-result" style="margin-top:8px;font-size:12px;"></div>
+              </div>
+
+              <!-- Étape 3: Nommage + type + Save -->
+              <div id="os-step3" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--tl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">3</span>
+                  Configuration finale
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Nom affiché</label><input type="text" id="os-name" placeholder="OpenStack Production DC2"></div>
+                  <div class="fg"><label>Type</label>
+                    <select id="os-type" onchange="toggleOSTypeFields()">
+                      <option value="custom">Community / Vanilla</option>
+                      <option value="redhat">Red Hat RHOSP</option>
+                      <option value="huawei">Huawei FusionSphere</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="fr">
+                  <div class="fg" style="flex:1;"><label>Zone de disponibilité</label><input type="text" id="os-az" value="nova" placeholder="nova"></div>
+                  <div class="fg" style="flex:1;"><label>Type de volume</label><input type="text" id="os-vol" placeholder="ceph, SAS, SSD (ou vide)"></div>
+                </div>
+                <!-- Champ spécifique Huawei -->
+                <div id="os-huawei-fields" style="display:none;">
+                  <div class="fg" style="margin-bottom:8px;"><label>Enterprise Project ID (ManageOne)</label><input type="text" id="os-ep-id" placeholder="0 ou ID ManageOne"></div>
+                </div>
+                <!-- Champ réseau externe -->
+                <div class="fg" style="margin-bottom:10px;"><label>Réseau externe (IPs flottantes)</label><input type="text" id="os-extnet" value="public" placeholder="public"></div>
+                <button class="btn btn-or" onclick="saveOS()">Enregistrer cet OpenStack</button>
+              </div>
+
+              <!-- Ressources découvertes -->
+              <div id="os-discovered" style="display:none;margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--bd);">
+                <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px;">DÉCOUVERT LORS DE L'AUTH :</div>
+                <div id="os-discovered-body" style="font-size:12px;"></div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- OpenStack enregistrés -->
+          <div class="card">
+            <div class="chd"><span class="ctitle">OpenStack enregistrés</span><button class="btn btn-sm" onclick="loadConnections()">↻</button></div>
+            <div id="os-saved-list" style="min-height:60px;">
+              <div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Aucun OpenStack enregistré</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: PROJECTS -->
+    <div class="page" id="page-projects">
+
+      <!-- Stats projets -->
+      <div class="sg sg4" style="margin-bottom:18px;" id="proj-stats-row">
+        <div class="sc or"><div class="sc-lbl">Total projets</div><div class="sc-val" id="ps-total">0</div><div class="sc-sub">tous statuts</div></div>
+        <div class="sc bl"><div class="sc-lbl">En cours</div><div class="sc-val" id="ps-inprog">0</div><div class="sc-sub">actifs</div></div>
+        <div class="sc gr"><div class="sc-lbl">Terminés</div><div class="sc-val" id="ps-done">0</div><div class="sc-sub">complétés</div></div>
+        <div class="sc am"><div class="sc-lbl">Planifiés</div><div class="sc-val" id="ps-plan">0</div><div class="sc-sub">à venir</div></div>
+      </div>
+
+      <div class="g2">
+
+        <!-- Créer un projet -->
+        <div class="card">
+          <div class="chd"><span class="ctitle">Créer un projet</span></div>
+          <div class="cbd">
+            <div class="fr">
+              <div class="fg" style="flex:2;"><label>Nom du projet</label><input type="text" id="pj-name" placeholder="Migration DC2 — Applicatifs Web"></div>
+              <div class="fg" style="flex:1;"><label>Code projet</label><input type="text" id="pj-code" placeholder="MIG-DC2-2025" style="text-transform:uppercase;"></div>
+            </div>
+            <div class="fg" style="margin-bottom:12px;"><label>Description</label><input type="text" id="pj-desc" placeholder="Contexte, objectifs, périmètre…"></div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>Chef de projet — CUID</label><input type="text" id="pj-cuid" placeholder="OR123456"></div>
+              <div class="fg" style="flex:1;"><label>Nom complet</label><input type="text" id="pj-chef" placeholder="Jean Dupont"></div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>Équipe</label><input type="text" id="pj-team" placeholder="Cloud Infrastructure"></div>
+              <div class="fg"><label>Priorité</label>
+                <select id="pj-prio">
+                  <option value="low">Faible</option>
+                  <option value="medium" selected>Moyenne</option>
+                  <option value="high">Haute</option>
+                  <option value="critical">Critique</option>
+                </select>
+              </div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>vCenter source</label>
+                <select id="pj-vc">
+                  <option value="">-- Tous --</option>
+                </select>
+              </div>
+              <div class="fg" style="flex:1;"><label>OpenStack cible</label>
+                <select id="pj-os">
+                  <option value="">-- Tous --</option>
+                  <option value="redhat">Red Hat RHOSP</option>
+                  <option value="huawei">Huawei FusionSphere</option>
+                  <option value="custom">Custom OpenStack</option>
+                </select>
+              </div>
+            </div>
+            <div class="fr">
+              <div class="fg"><label>Début prévu</label><input type="date" id="pj-start"></div>
+              <div class="fg"><label>Fin prévue</label><input type="date" id="pj-end"></div>
+            </div>
+            <div class="fg" style="margin-bottom:14px;"><label>Notes</label><input type="text" id="pj-notes" placeholder="Contraintes, dépendances, risques…"></div>
+            <button class="btn btn-or" onclick="createProject()">Créer le projet</button>
+          </div>
+        </div>
+
+        <!-- Liste projets -->
+        <div class="card">
+          <div class="chd">
+            <span class="ctitle">Projets de migration</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="pj-filter-status" onchange="loadProjects()" style="background:var(--bg);border:1px solid var(--bd);padding:5px 8px;border-radius:6px;font-size:12px;">
+                <option value="">Tous</option>
+                <option value="in_progress">En cours</option>
+                <option value="planned">Planifiés</option>
+                <option value="completed">Terminés</option>
+                <option value="suspended">Suspendus</option>
+              </select>
+              <button class="btn btn-sm" onclick="loadProjects()">↻</button>
+            </div>
+          </div>
+          <div style="overflow-y:auto;max-height:480px;" id="proj-list">
+            <div style="padding:32px;text-align:center;color:var(--tx3);">Chargement…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Détail projet sélectionné -->
+      <div class="card" id="proj-detail-card" style="display:none;">
+        <div class="chd">
+          <span class="ctitle" id="proj-detail-title">Détail du projet</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-info" onclick="openAttachModal()">+ Rattacher des jobs</button>
+            <button class="btn btn-sm" onclick="document.getElementById('proj-detail-card').style.display='none'">Fermer</button>
+          </div>
+        </div>
+        <div class="cbd" id="proj-detail-body"></div>
+      </div>
+
+    </div>
+
+    <!-- PAGE: MIGRATE -->
+    <div class="page" id="page-migrate">
+      <div class="g2" style="max-width:1100px;">
+
+        <!-- Colonne gauche : Navigateur vCenter → ESXi → VMs -->
+        <div>
+          <div class="card">
+            <div class="chd"><span class="ctitle">Sélection des VMs à migrer</span></div>
+            <div class="cbd" style="padding:0;">
+
+              <!-- Étape 1 : vCenter -->
+              <div style="padding:12px 16px;border-bottom:1px solid var(--bd);">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--or);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;">1</span>
+                  Choisir le vCenter
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <select id="f-vc" onchange="onVCChange()" style="flex:1;background:var(--bg);border:1px solid var(--bd);padding:7px 10px;border-radius:7px;font-size:13px;color:var(--tx);">
+                    <option value="">-- Sélectionner un vCenter --</option>
+                  </select>
+                  <button class="btn btn-sm btn-info" id="btn-load-hosts" onclick="loadHostsForVC()" disabled>Charger ESXi</button>
+                </div>
+              </div>
+
+              <!-- Étape 2 : ESXi -->
+              <div style="padding:12px 16px;border-bottom:1px solid var(--bd);" id="step-esxi" style="display:none;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--bl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;">2</span>
+                  Choisir l'ESXi hôte
+                </div>
+                <div id="esxi-list" style="display:grid;gap:6px;max-height:240px;overflow-y:auto;">
+                  <div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Chargez les ESXi d'abord</div>
+                </div>
+              </div>
+
+              <!-- Étape 3 : VMs -->
+              <div style="padding:12px 16px;" id="step-vms">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                  <span style="background:var(--tl);color:white;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;">3</span>
+                  Sélectionner les VMs
+                  <span id="vm-count-badge" style="display:none;background:var(--or);color:white;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:auto;"></span>
+                </div>
+
+                <!-- Recherche -->
+                <div style="margin-bottom:8px;position:relative;">
+                  <input type="text" id="vm-search" placeholder="Filtrer par nom, OS…"
+                    oninput="filterVMList(this.value)"
+                    style="width:100%;background:var(--bg);border:1px solid var(--bd);padding:7px 10px 7px 30px;border-radius:7px;font-size:12px;color:var(--tx);">
+                  <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;opacity:0.4;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                </div>
+
+                <div id="vm-list-wrap" style="border:1px solid var(--bd);border-radius:8px;overflow:hidden;max-height:260px;overflow-y:auto;">
+                  <div style="padding:24px;text-align:center;color:var(--tx3);font-size:12px;">Sélectionnez un ESXi pour voir ses VMs</div>
+                </div>
+
+                <!-- Panier des VMs sélectionnées -->
+                <div id="vm-basket-wrap" style="display:none;margin-top:10px;">
+                  <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px;">VMs sélectionnées</div>
+                  <div id="vm-basket" style="display:flex;flex-wrap:wrap;gap:5px;min-height:28px;"></div>
+                </div>
+
+                <!-- Ou saisir manuellement -->
+                <div style="margin-top:10px;">
+                  <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;">Ou saisir manuellement :</div>
+                  <input type="text" id="f-vms" placeholder="web-01, db-primary, app-03"
+                    style="width:100%;background:var(--bg);border:1px solid var(--bd);padding:7px 10px;border-radius:7px;font-size:12px;color:var(--tx);">
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonne droite : Config migration -->
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="chd"><span class="ctitle">Configuration de la migration</span></div>
+            <div class="cbd">
+              <div class="fr">
+                <div class="fg" style="flex:1;">
+                  <label>Plateforme cible OpenStack</label>
+                  <select id="f-target" onchange="updateOSStatusBadge()">
+                    <option value="redhat">Red Hat OpenStack (RHOSP)</option>
+                    <option value="huawei">Huawei FusionSphere</option>
+                    <option value="custom">Custom OpenStack</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fr">
+                <div class="fg" style="flex:1;">
+                  <label>Mode de migration</label>
+                  <select id="f-mode">
+                    <option value="cold">Cold — VM éteinte (recommandé)</option>
+                    <option value="warm">Warm — minimal downtime</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fg" style="margin-bottom:12px;">
+                <label>Opérateur</label>
+                <input type="text" id="f-op" placeholder="prenom.nom">
+              </div>
+
+              <!-- Status OpenStack -->
+              <div style="padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="font-size:12px;color:var(--tx2);flex:1;">Disponibilité plateforme :</div>
+                  <div id="os-target-badge" style="font-size:12px;color:var(--tx3);">Non vérifié</div>
+                  <button class="btn btn-xs btn-info" onclick="checkTargetOS()">Vérifier</button>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="f-dry" style="accent-color:var(--or);"> Dry-Run</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="f-skip" style="accent-color:var(--or);"> Ignorer évaluation</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="f-par" style="accent-color:var(--or);"> Parallèle</label>
+              </div>
+
+              <button class="btn btn-or" style="width:100%;padding:11px;" onclick="startMigration()">▶ Lancer la migration</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: JOBS -->
+    <div class="page" id="page-jobs">
+      <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+        <select id="jf-s" onchange="renderJobs()" style="background:var(--white);border:1px solid var(--bd);padding:6px 10px;border-radius:7px;font-size:13px;">
+          <option value="">Tous statuts</option>
+          <option value="pending">Pending</option><option value="extracting">Extracting</option>
+          <option value="converting">Converting</option><option value="deploying">Deploying</option>
+          <option value="evaluating">Evaluating</option><option value="completed">Completed</option><option value="failed">Failed</option>
+        </select>
+        <select id="jf-t" onchange="renderJobs()" style="background:var(--white);border:1px solid var(--bd);padding:6px 10px;border-radius:7px;font-size:13px;">
+          <option value="">Toutes plateformes</option>
+          <option value="redhat">Red Hat</option><option value="huawei">Huawei</option><option value="custom">Custom</option>
+        </select>
+        <span style="flex:1;"></span>
+        <button class="btn btn-sm" onclick="loadJobs()">↻ Rafraîchir</button>
+      </div>
+      <div class="card"><div style="overflow-x:auto;" id="jobs-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Chargement…</div></div></div>
+    </div>
+
+    <!-- PAGE: INSTANCES -->
+    <div class="page" id="page-instances">
+      <div style="display:flex;gap:9px;margin-bottom:14px;align-items:center;">
+        <select id="if-t" onchange="renderInstances()" style="background:var(--white);border:1px solid var(--bd);padding:6px 10px;border-radius:7px;font-size:13px;">
+          <option value="">Toutes plateformes</option>
+          <option value="redhat">Red Hat</option><option value="huawei">Huawei</option><option value="custom">Custom</option>
+        </select>
+        <span style="flex:1;"></span>
+        <button class="btn btn-sm" onclick="loadJobs()">↻ Rafraîchir</button>
+      </div>
+      <div class="card"><div style="overflow-x:auto;" id="inst-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Chargement…</div></div></div>
+    </div>
+
+    <!-- PAGE: PERFORMANCES -->
+    <div class="page" id="page-perf">
+      <div class="card">
+        <div class="chd">
+          <span class="ctitle">Comparaison performances avant / après migration</span>
+          <select id="perf-sel" onchange="loadPerfReport(this.value)" style="background:var(--bg);border:1px solid var(--bd);padding:5px 8px;border-radius:6px;font-size:12px;">
+            <option value="">-- Sélectionner un job --</option>
+          </select>
+        </div>
+        <div class="cbd" id="perf-content"><div style="padding:28px;text-align:center;color:var(--tx3);">Sélectionnez un job complété</div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="chd"><span class="ctitle">CPU — events/sec</span></div><div class="cbd"><div class="cwrap"><canvas id="c-cpu"></canvas></div></div></div>
+        <div class="card"><div class="chd"><span class="ctitle">Disque — IOPS</span></div><div class="cbd"><div class="cwrap"><canvas id="c-disk"></canvas></div></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="chd"><span class="ctitle">Mémoire — bandwidth</span></div><div class="cbd"><div class="cwrap"><canvas id="c-mem"></canvas></div></div></div>
+        <div class="card"><div class="chd"><span class="ctitle">Réseau — TCP bandwidth</span></div><div class="cbd"><div class="cwrap"><canvas id="c-net"></canvas></div></div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: TIMING -->
+    <div class="page" id="page-timing">
+      <div class="sg sg4">
+        <div class="sc tl"><div class="sc-lbl">Durée min.</div><div class="sc-val" id="t-min">—</div><div class="sc-sub">meilleure migration</div></div>
+        <div class="sc or"><div class="sc-lbl">Durée moy.</div><div class="sc-val" id="t-avg">—</div><div class="sc-sub">temps moyen</div></div>
+        <div class="sc am"><div class="sc-lbl">Durée max.</div><div class="sc-val" id="t-max">—</div><div class="sc-sub">plus longue</div></div>
+        <div class="sc bl"><div class="sc-lbl">Débit estimé</div><div class="sc-val" id="t-tp">—</div><div class="sc-sub">GB/heure</div></div>
+      </div>
+      <div class="card">
+        <div class="chd"><span class="ctitle">Durée par migration</span></div>
+        <div class="cbd"><div class="cwrap" style="height:200px;"><canvas id="c-phases"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="chd"><span class="ctitle">Tableau détaillé</span></div>
+        <div style="overflow-x:auto;" id="timing-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Aucune migration complétée</div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: ADMIN USERS -->
+    <div class="page" id="page-admin">
+      <div class="g2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="chd"><span class="ctitle">Créer un utilisateur</span></div>
+          <div class="cbd">
+            <div class="fr">
+              <div class="fg"><label>Prénom</label><input type="text" id="a-fn" placeholder="Jean"></div>
+              <div class="fg"><label>Nom</label><input type="text" id="a-ln" placeholder="Dupont"></div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>CUID <span style="font-weight:400;color:var(--tx3);">(Identifiant Orange Group)</span></label><input type="text" id="a-cuid" placeholder="OR123456" style="text-transform:uppercase;"></div>
+              <div class="fg" style="flex:1;"><label>Fonction</label><input type="text" id="a-func" placeholder="Ingénieur Cloud"></div>
+            </div>
+            <div class="fr">
+              <div class="fg"><label>Login</label><input type="text" id="a-login" placeholder="j.dupont"></div>
+              <div class="fg"><label>Rôle</label>
+                <select id="a-role">
+                  <option value="read_only">Lecture seule</option>
+                  <option value="operator" selected>Opérateur</option>
+                  <option value="admin">Administrateur</option>
+                  <option value="super_admin" id="a-role-sa" style="display:none;">Super Administrateur</option>
+                </select>
+              </div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>Mot de passe initial</label>
+                <div style="position:relative;">
+                  <input type="password" id="a-pwd" placeholder="Temp@12345" style="width:100%;padding-right:80px;">
+                  <button class="btn btn-xs" onclick="genPwd()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);">Générer</button>
+                </div>
+              </div>
+            </div>
+            <div class="fr" style="align-items:center;gap:16px;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="a-must-change" checked style="accent-color:var(--or);"> Forcer changement au 1er login
+              </label>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Plateformes autorisées <span style="font-weight:400;color:var(--tx3);">(vide = toutes)</span></div>
+              <div id="a-targets-wrap" style="display:flex;gap:8px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="redhat" class="a-target" style="accent-color:var(--or);"> Red Hat</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="huawei" class="a-target" style="accent-color:var(--or);"> Huawei</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="custom" class="a-target" style="accent-color:var(--or);"> Custom</label>
+              </div>
+            </div>
+            <button class="btn btn-or" onclick="createUser()">Créer l'utilisateur</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="chd"><span class="ctitle">Votre session</span></div>
+          <div class="cbd" id="session-info">
+            <div style="background:var(--bg);border-radius:8px;padding:14px;" id="cur-user-card">Chargement…</div>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+              <button class="btn btn-sm btn-danger" onclick="doLogout()">Se déconnecter</button>
+              <button class="btn btn-sm" onclick="nav('change-pwd')">Changer mon mot de passe</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chd">
+          <span class="ctitle">Utilisateurs de la plateforme</span>
+          <button class="btn btn-sm" onclick="loadUsers()">↻ Rafraîchir</button>
+        </div>
+        <div style="overflow-x:auto;" id="users-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Chargement…</div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: CHANGE PASSWORD (self) -->
+    <div class="page" id="page-change-pwd">
+      <div style="max-width:440px;">
+        <div class="card">
+          <div class="chd"><span class="ctitle">Changer mon mot de passe</span></div>
+          <div class="cbd">
+            <div class="fg" style="margin-bottom:12px;"><label>Mot de passe actuel</label>
+              <input type="password" id="cp-cur" placeholder="••••••••"></div>
+            <div class="fg" style="margin-bottom:12px;"><label>Nouveau mot de passe</label>
+              <input type="password" id="cp-new" placeholder="Min. 8 car., maj., chiffre, spécial" oninput="checkPwdStrength(this.value)">
+              <div style="height:3px;background:var(--bd);border-radius:2px;margin-top:5px;overflow:hidden;"><div id="cp-strength-bar" style="height:100%;border-radius:2px;transition:width 0.3s,background 0.3s;width:0;"></div></div>
+              <div id="cp-strength-lbl" style="font-size:11px;color:var(--tx3);margin-top:3px;"></div>
+            </div>
+            <div class="fg" style="margin-bottom:16px;"><label>Confirmer</label>
+              <input type="password" id="cp-conf" placeholder="••••••••"></div>
+            <div id="cp-err" style="display:none;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:9px 12px;font-size:13px;color:#DC2626;margin-bottom:12px;"></div>
+            <button class="btn btn-or" onclick="changeSelfPwd()">Modifier le mot de passe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ADMIN USERS -->
+    <div class="page" id="page-admin">
+      <div class="g2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="chd"><span class="ctitle">Créer un utilisateur</span></div>
+          <div class="cbd">
+            <div class="fr">
+              <div class="fg"><label>Prénom</label><input type="text" id="a-fn" placeholder="Jean"></div>
+              <div class="fg"><label>Nom</label><input type="text" id="a-ln" placeholder="Dupont"></div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>CUID</label><input type="text" id="a-cuid" placeholder="OR123456" style="text-transform:uppercase;"></div>
+              <div class="fg" style="flex:1;"><label>Fonction</label><input type="text" id="a-func" placeholder="Ingénieur Cloud"></div>
+            </div>
+            <div class="fr">
+              <div class="fg"><label>Login</label><input type="text" id="a-login" placeholder="j.dupont"></div>
+              <div class="fg"><label>Rôle</label>
+                <select id="a-role">
+                  <option value="read_only">Lecture seule</option>
+                  <option value="operator" selected>Opérateur</option>
+                  <option value="admin">Administrateur</option>
+                  <option value="super_admin" id="a-role-sa">Super Administrateur</option>
+                </select>
+              </div>
+            </div>
+            <div class="fr">
+              <div class="fg" style="flex:1;"><label>Mot de passe initial</label>
+                <div style="position:relative;">
+                  <input type="password" id="a-pwd" placeholder="Temp@12345" style="width:100%;padding-right:80px;">
+                  <button class="btn btn-xs" onclick="genPwd()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);">Générer</button>
+                </div>
+              </div>
+            </div>
+            <div class="fr" style="align-items:center;margin-bottom:12px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="a-must-change" checked style="accent-color:var(--or);"> Forcer changement au 1er login
+              </label>
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Plateformes autorisées <span style="font-weight:400;color:var(--tx3);">(vide = toutes)</span></div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="redhat" class="a-target" style="accent-color:var(--or);"> Red Hat</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="huawei" class="a-target" style="accent-color:var(--or);"> Huawei</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="custom" class="a-target" style="accent-color:var(--or);"> Custom</label>
+              </div>
+            </div>
+            <button class="btn btn-or" onclick="createUser()">Créer l'utilisateur</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="chd"><span class="ctitle">Ma session</span></div>
+          <div class="cbd">
+            <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px;" id="cur-user-card">Chargement…</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm btn-danger" onclick="doLogout()">Se déconnecter</button>
+              <button class="btn btn-sm" onclick="nav('change-pwd')">Changer mon MDP</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chd">
+          <span class="ctitle">Utilisateurs de la plateforme</span>
+          <button class="btn btn-sm" onclick="loadUsers()">↻ Rafraîchir</button>
+        </div>
+        <div style="overflow-x:auto;" id="users-tbl"><div style="padding:32px;text-align:center;color:var(--tx3);">Chargement…</div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: CHANGE PASSWORD -->
+    <div class="page" id="page-change-pwd">
+      <div style="max-width:440px;">
+        <div class="card">
+          <div class="chd"><span class="ctitle">Changer mon mot de passe</span></div>
+          <div class="cbd">
+            <div class="fg" style="margin-bottom:12px;"><label>Mot de passe actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div>
+            <div class="fg" style="margin-bottom:12px;"><label>Nouveau mot de passe</label>
+              <input type="password" id="cp-new" placeholder="Min. 8 car., maj., chiffre, spécial" oninput="checkPwdStrength(this.value)">
+              <div style="height:3px;background:var(--bd);border-radius:2px;margin-top:5px;overflow:hidden;"><div id="cp-bar" style="height:100%;border-radius:2px;transition:width 0.3s,background 0.3s;width:0;"></div></div>
+              <div id="cp-lbl" style="font-size:11px;color:var(--tx3);margin-top:3px;"></div>
+            </div>
+            <div class="fg" style="margin-bottom:16px;"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div>
+            <div id="cp-err" style="display:none;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:9px 12px;font-size:13px;color:#DC2626;margin-bottom:12px;"></div>
+            <button class="btn btn-or" onclick="changeSelfPwd()">Modifier le mot de passe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: LOGS -->
+    <div class="page" id="page-logs">
+      <div class="card">
+        <div class="chd">
+          <span class="ctitle">Logs &amp; Audit trail</span>
+          <div style="display:flex;gap:8px;">
+            <select id="lf" onchange="renderLogs()" style="background:var(--bg);border:1px solid var(--bd);padding:5px 8px;border-radius:6px;font-size:12px;">
+              <option value="">Tous</option><option value="ERROR">Erreurs</option><option value="WARNING">Avertissements</option><option value="INFO">Info</option>
+            </select>
+            <button class="btn btn-sm btn-danger" onclick="allLogs=[];renderLogs()">Effacer</button>
+          </div>
+        </div>
+        <div class="cbd"><div class="logbox" id="logbox"><div class="ll INFO"><span class="lt">--:--:--</span><span class="lm">[system]</span><span class="le">En attente de connexion WebSocket…</span></div></div></div>
+      </div>
+    </div>
+
+  <div id="os-overall-badge" style="display:none;"></div>
+</div><!-- .content -->
+</div><!-- .main -->
+</div><!-- .layout -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="fl">
+    <img src="/static/dashboard/orange-logo.jpeg" alt="Orange">
+    <span>Orange Group — Cloud Infrastructure</span>
+  </div>
+  <div class="fc">
+    <span class="fc-badge">🔒 ORANGE RESTRICTED</span>
+  </div>
+  <div class="fr2">Migration Framework v2.0 &nbsp;|&nbsp; &copy; 2025 Orange S.A.</div>
+</footer>
+
+<!-- MODAL: ACTIONS INSTANCE -->
+<div class="mbk" id="m-act">
+  <div class="modal">
+    <div class="mhd"><span class="mtitle" id="m-act-title">Gérer l'instance</span><button class="mclose" onclick="cm('m-act')">×</button></div>
+    <div class="mbd" id="m-act-body"></div>
+    <div class="mft"><button class="btn" onclick="cm('m-act')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- MODAL: RAPPORT PERF -->
+<div class="mbk" id="m-rep">
+  <div class="modal lg">
+    <div class="mhd"><span class="mtitle" id="m-rep-title">Rapport de performance</span><button class="mclose" onclick="cm('m-rep')">×</button></div>
+    <div class="mbd" id="m-rep-body"></div>
+    <div class="mft"><button class="btn" onclick="cm('m-rep')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- MODAL: TIMELINE -->
+<div class="mbk" id="m-tl">
+  <div class="modal">
+    <div class="mhd"><span class="mtitle" id="m-tl-title">Timeline</span><button class="mclose" onclick="cm('m-tl')">×</button></div>
+    <div class="mbd" id="m-tl-body"></div>
+    <div class="mft"><button class="btn" onclick="cm('m-tl')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- MODAL: OPENSTACK RESOURCES -->
+<div class="mbk" id="m-os-res">
+  <div class="modal lg">
+    <div class="mhd"><span class="mtitle" id="m-os-title">Ressources OpenStack</span><button class="mclose" onclick="cm('m-os-res')">×</button></div>
+    <div class="mbd" id="m-os-body"></div>
+    <div class="mft"><button class="btn" onclick="cm('m-os-res')">Fermer</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+function logoClick(e){
+  e.preventDefault();
+  // Recharge la page dashboard
+  allJobs=[];
+  nav('dashboard',false);
+  loadStats();
+  loadJobs();
+  toast('Dashboard rechargé','info');
+}
+function historyFwd(){
+  if(navIdx<navHistory.length-1){ navIdx++; nav(navHistory[navIdx], false); }
+}
+function historyBack(){
+  if(navIdx>0){ navIdx--; nav(navHistory[navIdx], false); }
+}
+function nav(p, pushHistory=true){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('act'));
+  const pg=document.getElementById('page-'+p);
+  if(pg) pg.classList.add('act');
+
+  document.querySelectorAll('.nb').forEach(x=>x.classList.remove('act'));
+  const nb=document.getElementById('nb-'+p);
+  if(nb) nb.classList.add('act');
+
+  const TITLES={
+    dashboard:['Dashboard','Vue d\'ensemble'],
+    infra:['Infrastructure','vCenters & OpenStack'],
+    migrate:['Nouvelle migration','VMware → OpenStack'],
+    jobs:['Jobs de migration','Suivi temps réel'],
+    instances:['Instances migrées','Gestion post-migration'],
+    perf:['Performances','Comparaison avant / après'],
+    timing:['Temps de migration','Analyse des durées'],
+    logs:['Logs & Audit','Traçabilité entreprise'],
+  };
+  const[t,s]=TITLES[p]||[p,''];
+  document.getElementById('ptitle').innerHTML=`${t} <span>${s}</span>`;
+
+  // Push dans l'historique de navigation interne
+  if(pushHistory){
+    navHistory=navHistory.slice(0,navIdx+1);
+    navHistory.push(p);
+    navIdx=navHistory.length-1;
+  }
+  updateNavButtons();
+
+  // Actions spécifiques à la page
+  if(p==='instances') renderInstances();
+  if(p==='jobs') renderJobs();
+  if(p==='timing') renderTiming();
+  if(p==='perf') populatePerfSel();
+  if(p==='admin'){ loadUsers(); renderCurrentUser(); }
+  if(p==='projects'){ loadProjects(); populatePJVCenterSelect(); }
+  if(p==='infra'){ loadConnections(); }
+  if(p==='migrate') populateVCenterSelect();
+
+  // Mettre à jour l'URL sans recharger
+  try{ history.pushState({page:p}, '', '#'+p); } catch(e){}
+}
+
+const API='';
+let socket,allJobs=[],allLogs=[];
+let allVCenters=[],osStatuses={};
+let cStatus,cPerf,cCpu,cDisk,cMem,cNet,cPhases;
+
+// ══ HISTORY (navigation browser) ══════════════════════════════
+let navHistory=['dashboard'], navIdx=0;
+
+// logoClick() défini plus haut
+
+
+// nav() défini plus haut
+
+
+// historyBack() défini plus haut
+// historyFwd() défini plus haut
+function updateNavButtons(){
+  document.getElementById('btn-back').disabled = navIdx<=0;
+  document.getElementById('btn-fwd').disabled  = navIdx>=navHistory.length-1;
+}
+
+// Écouter les boutons navigateur du browser
+window.addEventListener('popstate', e=>{
+  if(e.state?.page) nav(e.state.page, false);
+});
+
+// ══ WEBSOCKET ══════════════════════════════════════════════════
+function connectWS(){
+  socket=io(window.location.origin,{transports:['websocket','polling']});
+  socket.on('connect',()=>{setConn(true);log('system','WebSocket connecté','INFO');});
+  socket.on('disconnect',()=>{setConn(false);log('system','Déconnecté','WARNING');});
+  socket.on('initial_state',d=>{allJobs=d.jobs||[];refresh();});
+  socket.on('job_update',j=>{
+    const i=allJobs.findIndex(x=>x.job_id===j.job_id);
+    if(i>=0)allJobs[i]=j;else allJobs.unshift(j);
+    refresh();loadStats();updateBadge();
+    log(j.vm_name,'→ '+j.status,j.status==='failed'?'ERROR':'INFO');
+  });
+  socket.on('job_complete',j=>{
+    const ok=j.status==='completed';
+    toast(j.vm_name+' — '+(ok?'Réussie ✓':'Échec ✗')+(j.perf_score?' · '+j.perf_score.toFixed(1)+'/100':'')+(j.duration_s?' · '+fmtDur(j.duration_s):''),ok?'success':'error');
+  });
+}
+function setConn(ok){document.getElementById('cdot').className='cdot'+(ok?' on':'');document.getElementById('clbl').textContent=ok?'Connecté':'Déconnecté';}
+function refresh(){renderRecent();renderJobs();renderInstances();updatePerf();updateBadge();renderTiming();}
+
+// ══ API ════════════════════════════════════════════════════════
+async function loadStats(){
+  try{
+    const d=await api('/api/v1/stats');
+    document.getElementById('s-total').textContent=d.total_jobs;
+    document.getElementById('s-ok').textContent=d.by_status?.completed||0;
+    document.getElementById('s-rate').textContent=(d.success_rate_pct||0)+'% succès';
+    document.getElementById('s-score').textContent=d.avg_perf_score?d.avg_perf_score.toFixed(1):'—';
+    document.getElementById('s-inst').textContent=allJobs.filter(j=>j.instance_id).length;
+    document.getElementById('s-dur').textContent=d.avg_duration_s?fmtDur(d.avg_duration_s):'—';
+    document.getElementById('s-running').textContent=allJobs.filter(j=>!['completed','failed','rolled_back','cancelled','pending'].includes(j.status)).length;
+    updateStatus(d.by_status||{});
+  }catch(e){}
+}
+async function loadJobs(){try{const d=await api('/api/v1/jobs');allJobs=d.jobs||[];refresh();}catch(e){}}
+
+// ══ MULTI-VCENTER ══════════════════════════════════════════════
+async function loadVCenters(){
+  loadConnections(); return;
+  // Legacy below (kept for fallback)
+  try{
+    const d=await api('/api/v1/vcenters');
+    allVCenters=d.vcenters||[];
+    renderVCCards();
+    populateVCenterSelect();
+  }catch(e){toast('Erreur chargement vCenters','error');}
+}
+
+function renderVCCards(){
+  // Remplacé par renderSavedVCenters() dans le wizard Infrastructure
+  loadConnections();
+}
+
+function showVCInventory(vcId, data){
+  const vc=allVCenters.find(v=>v.id===vcId);
+  const vms=data.vms||[];
+  let h=`<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;">${data.count} VMs trouvées sur <strong>${vc?.name||vcId}</strong></div>`;
+  if(vms.length){
+    h+=`<div style="overflow-x:auto;max-height:360px;overflow-y:auto;"><table class="tbl"><thead><tr><th>Nom</th><th>OS</th><th>vCPU</th><th>RAM</th><th>État</th><th>Action</th></tr></thead><tbody>`;
+    vms.forEach(v=>{
+      h+=`<tr>
+        <td style="font-weight:700;color:var(--bl);font-family:monospace;font-size:12px;">${v.name}</td>
+        <td style="font-size:12px;color:var(--tx2);">${(v.guest_os||'—').slice(0,24)}</td>
+        <td style="text-align:center;">${v.vcpus}</td>
+        <td style="text-align:center;">${((v.memory_mb||0)/1024).toFixed(1)}GB</td>
+        <td><span class="badge ${v.power_state==='poweredOn'?'running':'stopped'}">${v.power_state==='poweredOn'?'ON':'OFF'}</span></td>
+        <td><button class="btn btn-xs btn-or" onclick="prefillVCandVM('${vcId}','${v.name}')">Migrer →</button></td>
+      </tr>`;
+    });
+    h+='</tbody></table></div>';
+  }
+  // Show in a simple zone below the cards or open modal
+  document.getElementById('m-act-title').textContent='Inventaire — '+(vc?.name||vcId);
+  document.getElementById('m-act-body').innerHTML=h;
+  document.getElementById('m-act').classList.add('open');
+}
+
+function prefillVC(vcId){
+  document.getElementById('f-vc').value=vcId;
+  onVCChange();
+  nav('migrate');
+}
+function prefillVCandVM(vcId, vmName){
+  cm('m-act');
+  document.getElementById('f-vc').value=vcId;
+  document.getElementById('f-vms').value=vmName;
+  nav('migrate');
+  toast('"'+vmName+'" prête à migrer','info');
+}
+
+function populateVCenterSelect(){
+  const sel=document.getElementById('f-vc');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">-- Sélectionner un vCenter --</option>'+allVCenters.map(vc=>`<option value="${vc.id}" ${vc.id===cur?'selected':''}>${vc.name||vc.host}</option>`).join('');
+  updateVCButton();
+}
+
+function onVCChange(){
+  updateVCButton();
+  // vm-picker-wrap migré vers vm-list-wrap
+}
+function updateVCButton(){
+  document.getElementById('btn-load-hosts').disabled=!document.getElementById('f-vc').value;
+}
+
+async function scanSelectedVC(){
+  await loadHostsForVC();
+}
+
+async function loadOSStatus(){
+  // Les OpenStack sont maintenant gérés via le wizard Infrastructure
+  // Cette fonction retest tous les OpenStack enregistrés
+  try{
+    const d = await api('/api/v1/connections');
+    const oss = d.openstacks || [];
+    const badge = document.getElementById('os-overall-badge');
+    if(!oss.length){
+      if(badge) badge.innerHTML='<span class="badge pending">Aucun OpenStack configuré</span>';
+      return;
+    }
+    // Tester chaque connexion
+    let allOk = true;
+    for(const os of oss){
+      try{
+        const r = await fetch('/api/v1/connections/openstack/'+os.conn_id+'/retest',
+          {method:'POST', headers:authHeaders()});
+        const rd = await r.json();
+        if(!rd.success) allOk = false;
+      }catch(e){ allOk = false; }
+    }
+    if(badge) badge.innerHTML = allOk
+      ? '<span class="badge b-ok">Tous opérationnels</span>'
+      : '<span class="badge b-err">Dégradé</span>';
+    loadConnections(); // Rafraîchir la liste
+  }catch(e){ toast('Erreur vérification OpenStack','error'); }
+}
+
+async function loadOSResources(target){
+  toast('Chargement ressources '+target+'…','info');
+  try{
+    const d=await api('/api/v1/openstack/'+target+'/resources');
+    const c=d.compute;
+    const vcpuPct=c.max_vcpus>0?Math.round(c.used_vcpus/c.max_vcpus*100):0;
+    const ramPct=c.max_ram_mb>0?Math.round(c.used_ram_mb/c.max_ram_mb*100):0;
+    const instPct=c.max_instances>0?Math.round(c.used_instances/c.max_instances*100):0;
+    const colorFor=p=>p>80?'var(--re)':p>60?'var(--am)':'var(--gr)';
+    let h=`<div class="sg sg3" style="margin-bottom:16px;">
+      <div class="mchip"><div class="mc-lbl">Instances</div><div class="mc-val">${c.used_instances}/${c.max_instances}</div>
+        <div style="height:4px;background:var(--bd);border-radius:2px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${instPct}%;background:${colorFor(instPct)};border-radius:2px;"></div></div>
+        <div class="mc-sub">${instPct}% utilisé</div>
+      </div>
+      <div class="mchip"><div class="mc-lbl">vCPUs</div><div class="mc-val">${c.used_vcpus}/${c.max_vcpus}</div>
+        <div style="height:4px;background:var(--bd);border-radius:2px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${vcpuPct}%;background:${colorFor(vcpuPct)};border-radius:2px;"></div></div>
+        <div class="mc-sub">${vcpuPct}% utilisé</div>
+      </div>
+      <div class="mchip"><div class="mc-lbl">RAM</div><div class="mc-val">${Math.round(c.used_ram_mb/1024)}/${Math.round(c.max_ram_mb/1024)} GB</div>
+        <div style="height:4px;background:var(--bd);border-radius:2px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${ramPct}%;background:${colorFor(ramPct)};border-radius:2px;"></div></div>
+        <div class="mc-sub">${ramPct}% utilisé</div>
+      </div>
+    </div>`;
+    if(d.networks?.length){
+      h+=`<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--tx2);margin-bottom:8px;">Réseaux disponibles</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">${d.networks.map(n=>`<span style="background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:3px 9px;font-size:12px;">${n.name}</span>`).join('')}</div>`;
+    }
+    if(d.flavors?.length){
+      h+=`<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--tx2);margin-bottom:8px;">Flavors disponibles</div>
+        <div style="overflow-x:auto;"><table class="tbl" style="font-size:12px;"><thead><tr><th>Nom</th><th>vCPU</th><th>RAM</th><th>Disk</th></tr></thead><tbody>
+          ${d.flavors.map(f=>`<tr><td style="font-weight:600;">${f.name}</td><td>${f.vcpus}</td><td>${Math.round(f.ram/1024)}GB</td><td>${f.disk}GB</td></tr>`).join('')}
+        </tbody></table></div>`;
+    }
+    document.getElementById('m-os-title').textContent='Ressources — '+target;
+    document.getElementById('m-os-body').innerHTML=h;
+    document.getElementById('m-os-res').classList.add('open');
+  }catch(e){toast('Erreur: '+e.message,'error');}
+}
+
+async function checkTargetOS(){
+  const target=document.getElementById('f-target').value;
+  const badge=document.getElementById('os-target-badge');
+  badge.innerHTML='<span style="color:var(--am);">Vérification…</span>';
+  try{
+    const d=await api('/api/v1/openstack/'+target+'/status');
+    osStatuses[target]=d;
+    badge.innerHTML=d.status==='ok'
+      ?`<span style="color:var(--gr);font-weight:700;">✓ Opérationnel — ${d.latency_ms}ms</span>`
+      :`<span style="color:var(--re);font-weight:700;">✗ Indisponible — ${d.message?.slice(0,50)||''}</span>`;
+  }catch(e){badge.innerHTML='<span style="color:var(--re);">✗ Erreur réseau</span>';}
+}
+
+function updateOSStatusBadge(){
+  const target=document.getElementById('f-target').value;
+  const badge=document.getElementById('os-target-badge');
+  const st=osStatuses[target];
+  if(!st){badge.innerHTML='<span style="color:var(--tx3);">Non vérifié — cliquez "Vérifier"</span>';return;}
+  badge.innerHTML=st.status==='ok'
+    ?`<span style="color:var(--gr);font-weight:700;">✓ Opérationnel — ${st.latency_ms}ms</span>`
+    :`<span style="color:var(--re);font-weight:700;">✗ Indisponible</span>`;
+}
+
+// ══ MIGRATION ═════════════════════════════════════════════════
+async function startMigration(){
+  const raw=document.getElementById('f-vms').value.trim();
+  if(!raw){toast('Entrez au moins un nom de VM','error');return;}
+  const body={vms:raw.split(',').map(s=>s.trim()).filter(Boolean),target:document.getElementById('f-target').value,mode:document.getElementById('f-mode').value,operator:document.getElementById('f-op').value.trim()||'dashboard',dry_run:document.getElementById('f-dry').checked,skip_evaluation:document.getElementById('f-skip').checked,parallel:document.getElementById('f-par').checked};
+  // Vérifier status OS avant de lancer
+  const tgt=body.target;
+  if(osStatuses[tgt]?.status==='error'){if(!confirm(`⚠ ${tgt} semble indisponible. Continuer quand même ?`))return;}
+  try{
+    const r=await fetch(API+'/api/v1/migrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok){toast('Erreur: '+d.error,'error');return;}
+    toast(body.vms.length+' migration(s) démarrée(s)'+(body.dry_run?' [DRY-RUN]':''),'success');
+    log('system','Démarrage: '+body.vms.join(', ')+' → '+body.target,'INFO');
+    setTimeout(()=>{loadJobs();nav('jobs');},500);
+  }catch(e){toast('Erreur réseau','error');}
+}
+async function cancelJob(id){if(!confirm('Annuler ?'))return;try{const r=await fetch(API+'/api/v1/jobs/'+id,{method:'DELETE'});if(r.ok){toast('Annulé','info');loadJobs();}}catch(e){}}
+
+// ══ REPORT / ACTIONS ══════════════════════════════════════════
+async function showReport(jid){
+  try{
+    const d=await api('/api/v1/jobs/'+jid+'/report');
+    if(d.error){toast(d.error,'error');return;}
+    const sc=d.overall_score>=80?'#10B981':d.overall_score>=60?'#F59E0B':'#EF4444';
+    let h=`<div class="g3" style="margin-bottom:14px;">
+      <div class="mchip"><div class="mc-lbl">Score global</div><div class="mc-val" style="color:${sc}">${d.overall_score.toFixed(1)}/100</div><div class="mc-sub">${d.passed?'✓ PASS':'✗ FAIL'}</div></div>
+      <div class="mchip"><div class="mc-lbl">Métriques VMware</div><div class="mc-val">${d.vmware_metrics_count}</div><div class="mc-sub">baseline</div></div>
+      <div class="mchip"><div class="mc-lbl">Métriques OpenStack</div><div class="mc-val">${d.openstack_metrics_count}</div><div class="mc-sub">post-migration</div></div>
+    </div>`;
+    if(d.comparisons?.length){
+      h+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx2);margin-bottom:8px;">Comparaison VMware vs OpenStack</div>`;
+      d.comparisons.forEach(c=>{
+        const pct=c.vmware>0?Math.min(100,c.openstack/c.vmware*100):50;
+        const dc=c.delta_pct>=0?'#10B981':(c.regression?'#EF4444':'#F59E0B');
+        h+=`<div class="perf-row">
+          <div class="perf-metric">${c.metric}</div>
+          <div class="perf-bars">
+            <div class="pbr"><span class="pb-lbl">VMware</span><div class="pb-track"><div class="pb-fill" style="width:100%;background:#FF6600;"></div></div><span class="pb-val" style="color:#FF6600;">${c.vmware.toFixed(1)}</span></div>
+            <div class="pbr"><span class="pb-lbl">OpenStack</span><div class="pb-track"><div class="pb-fill" style="width:${Math.max(2,pct)}%;background:${dc};"></div></div><span class="pb-val" style="color:${dc};">${c.openstack.toFixed(1)}</span></div>
+            <div class="pbr"><span class="pb-lbl" style="color:var(--tx3);">${c.unit}</span></div>
+          </div>
+          <div class="perf-delta">${c.delta_pct>=0?`<span class="dp dp-up">+${c.delta_pct.toFixed(1)}%</span>`:c.regression?`<span class="dp dp-dn">${c.delta_pct.toFixed(1)}%</span>`:`<span class="dp dp-fl">${c.delta_pct.toFixed(1)}%</span>`}</div>
+        </div>`;
+      });
+    }
+    if(d.recommendations?.length){
+      h+=`<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:11px 13px;margin-top:12px;"><div style="font-size:11px;font-weight:700;color:#C2410C;margin-bottom:7px;">RECOMMANDATIONS</div>`;
+      d.recommendations.forEach(r=>{h+=`<div style="font-size:12px;color:#92400E;margin-bottom:5px;padding-left:9px;border-left:3px solid var(--or);">${r}</div>`;});
+      h+='</div>';
+    }
+    document.getElementById('m-rep-title').textContent='Rapport — '+(d.vm_name||'');
+    document.getElementById('m-rep-body').innerHTML=h;
+    document.getElementById('m-rep').classList.add('open');
+    updatePerfCharts(d.comparisons||[]);
+  }catch(e){toast('Erreur rapport','error');}
+}
+
+async function showTimeline(j){
+  const phases=[{n:'Extract',s:['extracting']},{n:'Convert',s:['converting']},{n:'Deploy',s:['deploying']},{n:'Evaluate',s:['evaluating']},{n:'Optimize',s:['optimizing']}];
+  const order=['extracting','converting','deploying','evaluating','optimizing','completed'];
+  let tl='<div class="timeline">';
+  phases.forEach((p,i)=>{
+    const ci=order.indexOf(j.status), pi=order.indexOf(p.s[0]);
+    let cls=j.status==='completed'?'done':j.status==='failed'?(pi<=ci?'err':''):(pi<ci?'done':pi===ci?'active':'');
+    const ic=cls==='done'?'✓':cls==='active'?'●':cls==='err'?'✗':(i+1).toString();
+    tl+=`<div class="tl-step ${cls}"><div class="tl-dot">${ic}</div><div class="tl-lbl">${p.n}</div></div>`;
+  });
+  tl+='</div>';
+  const sum=`<div style="background:var(--bg);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">VM</div><div style="font-family:monospace;font-weight:700;font-size:12px;">${j.vm_name}</div></div>
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">PLATEFORME</div>${tpill(j.target)}</div>
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">DURÉE TOTALE</div><div style="font-size:16px;font-weight:800;color:var(--or);">${j.duration_s?fmtDur(j.duration_s):'En cours…'}</div></div>
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">DÉMARRÉ</div><div style="font-size:11px;">${j.started_at?new Date(j.started_at).toLocaleString('fr-FR'):'—'}</div></div>
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">TERMINÉ</div><div style="font-size:11px;">${j.completed_at?new Date(j.completed_at).toLocaleString('fr-FR'):'—'}</div></div>
+    <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">INSTANCE</div><div class="mono" style="font-size:10px;">${(j.instance_id||'—').slice(0,18)}</div></div>
+  </div>`;
+  document.getElementById('m-tl-title').textContent='Timeline — '+j.vm_name;
+  document.getElementById('m-tl-body').innerHTML=tl+sum;
+  document.getElementById('m-tl').classList.add('open');
+}
+
+async function openActions(j){
+  let recs=[];try{const d=await api('/api/v1/jobs/'+j.job_id+'/recommendations');recs=d.recommendations||[];}catch(e){}
+  let h=`<div style="background:var(--bg);border-radius:8px;padding:11px 13px;margin-bottom:13px;">
+    <div style="font-size:10px;color:var(--tx2);font-weight:600;margin-bottom:5px;">INSTANCE</div>
+    <div style="font-family:monospace;font-weight:700;">${j.instance_id||'—'}</div>
+    <div style="margin-top:5px;display:flex;gap:5px;">${tpill(j.target)} <span class="badge b-ok">Active</span></div>
+  </div>
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx);margin-bottom:9px;">Actions post-migration</div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
+    <button class="btn btn-sm btn-info" onclick="vmAct('${j.job_id}','reboot')">↺ Redémarrer</button>
+    <button class="btn btn-sm btn-info" onclick="vmAct('${j.job_id}','console')">⌨ Console</button>
+    <button class="btn btn-sm btn-ok" onclick="vmAct('${j.job_id}','snapshot')">📸 Snapshot</button>
+    <button class="btn btn-sm" onclick="vmAct('${j.job_id}','resize')">⬆ Resize</button>
+    <button class="btn btn-sm" onclick="vmAct('${j.job_id}','floating-ip')">🌐 IP flottante</button>
+    <button class="btn btn-sm" onclick="vmAct('${j.job_id}','sg')">🔒 Sec. groups</button>
+    <button class="btn btn-sm btn-danger" onclick="vmAct('${j.job_id}','stop')">⏹ Arrêter</button>
+  </div>`;
+  if(recs.length){
+    h+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx);margin-bottom:9px;">Optimisations suggérées</div>
+    <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:11px 13px;">`;
+    recs.forEach(r=>{
+      h+=`<div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #FED7AA;">
+        <div style="flex:1;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;">${r.resource}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:2px;">${r.reason}</div>
+        <div style="font-size:12px;margin-top:3px;">Actuel: <strong>${r.current}</strong> → Rec.: <strong style="color:var(--or-d);">${r.recommended}</strong>
+        ${r.saving_pct>0?`<span style="margin-left:6px;background:#F0FDF4;color:#059669;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;">-${r.saving_pct.toFixed(0)}%</span>`:''}</div></div>
+        <button class="btn btn-xs btn-or" onclick="applyRec('${j.job_id}','${r.resource}',\`${r.recommended}\`)">Appliquer</button>
+      </div>`;
+    });
+    h+='</div>';
+  }
+  document.getElementById('m-act-title').textContent='Gérer — '+j.vm_name;
+  document.getElementById('m-act-body').innerHTML=h;
+  document.getElementById('m-act').classList.add('open');
+}
+
+async function vmAct(jid,action){
+  const L={reboot:'Redémarrage',console:'Console',snapshot:'Snapshot',resize:'Resize',stop:'Arrêt','floating-ip':'IP flottante',sg:'Security groups'};
+  toast((L[action]||action)+' en cours…','info');
+  try{const r=await fetch(API+'/api/v1/instances/'+jid+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});const d=await r.json();toast(r.ok?(d.message||L[action]+' OK'):(d.error||'Erreur'),r.ok?'success':'error');}
+  catch(e){toast((L[action]||action)+' — disponible en env. réel','info');}
+  log(jid.slice(0,8),'Action: '+action,'INFO');
+}
+
+async function applyRec(jid,resource,value){
+  toast('Optimisation…','info');
+  try{const r=await fetch(API+'/api/v1/instances/'+jid+'/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resource,recommended_value:value})});const d=await r.json();toast(r.ok?(d.message||'Appliqué'):(d.error||'Erreur'),r.ok?'success':'error');}
+  catch(e){toast('Enregistré — disponible en env. réel','info');}
+  log(jid.slice(0,8),'Opt: '+resource+' → '+value,'INFO');cm('m-act');
+}
+
+function refreshAll(){loadStats();loadJobs();toast('Actualisé','info');}
+
+// ══ RENDER ════════════════════════════════════════════════════
+function renderRecent(){
+  const c=document.getElementById('recent-tbl');
+  const jobs=allJobs.slice(0,6);
+  if(!jobs.length){c.innerHTML='<div style="padding:28px;text-align:center;color:var(--tx3);">Aucune migration</div>';return;}
+  c.innerHTML=jobsTable(jobs);
+}
+function renderJobs(){
+  const c=document.getElementById('jobs-tbl');
+  const sf=document.getElementById('jf-s')?.value||'';
+  const tf=document.getElementById('jf-t')?.value||'';
+  const jobs=allJobs.filter(j=>(!sf||j.status===sf)&&(!tf||j.target===tf));
+  if(!jobs.length){c.innerHTML='<div style="padding:28px;text-align:center;color:var(--tx3);">Aucun job</div>';return;}
+  c.innerHTML=jobsTable(jobs,true);
+}
+function renderInstances(){
+  const c=document.getElementById('inst-tbl');
+  const tf=document.getElementById('if-t')?.value||'';
+  const insts=allJobs.filter(j=>j.instance_id&&j.status==='completed'&&(!tf||j.target===tf));
+  document.getElementById('s-inst').textContent=allJobs.filter(j=>j.instance_id).length;
+  if(!insts.length){c.innerHTML='<div style="padding:28px;text-align:center;color:var(--tx3);">Aucune instance</div>';return;}
+  c.innerHTML=`<table class="tbl"><thead><tr><th>VM / Instance</th><th>Plateforme</th><th>Statut</th><th>Score</th><th>Durée migration</th><th>Migré le</th><th>Actions</th></tr></thead><tbody>
+    ${insts.map(j=>{
+      const sc=j.perf_score!=null?j.perf_score.toFixed(1):null;
+      const scolor=!sc?'#9CA3AF':j.perf_score>=80?'#10B981':j.perf_score>=60?'#F59E0B':'#EF4444';
+      return`<tr>
+        <td><div style="font-weight:700;font-family:monospace;font-size:12px;">${j.vm_name}</div><div class="mono" style="font-size:10px;">${(j.instance_id||'').slice(0,18)}…</div></td>
+        <td>${tpill(j.target)}</td>
+        <td><span class="badge b-ok">Active</span></td>
+        <td><span style="font-weight:800;color:${scolor};">${sc?sc+'/100':'—'}</span></td>
+        <td style="font-weight:600;color:var(--tl);">${j.duration_s?fmtDur(j.duration_s):'—'}</td>
+        <td style="color:var(--tx2);font-size:12px;">${j.completed_at?new Date(j.completed_at).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="btn btn-xs btn-or" onclick="openActionsByID(\'${j.job_id}\')">Gérer</button>
+          <button class="btn btn-xs btn-info" onclick='showReport("${j.job_id}")' ${!sc?'disabled':''}>Perf.</button>
+          <button class="btn btn-xs" onclick="showTimelineByID(\'${j.job_id}\')">Timeline</button>
+        </td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+function renderTiming(){
+  const done=allJobs.filter(j=>j.duration_s);
+  if(!done.length)return;
+  const durs=done.map(j=>j.duration_s);
+  const mn=Math.min(...durs),mx=Math.max(...durs),av=durs.reduce((a,b)=>a+b,0)/durs.length;
+  document.getElementById('t-min').textContent=fmtDur(mn);
+  document.getElementById('t-avg').textContent=fmtDur(av);
+  document.getElementById('t-max').textContent=fmtDur(mx);
+  document.getElementById('t-tp').textContent='~'+Math.round(3600/av*10)+'GB/h';
+  document.getElementById('timing-tbl').innerHTML=`<table class="tbl"><thead><tr><th>VM</th><th>Plateforme</th><th>Durée totale</th><th>Score perf.</th><th>Démarré</th><th>Terminé</th><th>Détails</th></tr></thead><tbody>
+    ${done.sort((a,b)=>new Date(b.completed_at||0)-new Date(a.completed_at||0)).map(j=>{
+      const sc=j.perf_score!=null?j.perf_score.toFixed(1):null;
+      const scolor=!sc?'#9CA3AF':j.perf_score>=80?'#10B981':j.perf_score>=60?'#F59E0B':'#EF4444';
+      const pct=j.duration_s?(j.duration_s/mx*100).toFixed(0):0;
+      return`<tr>
+        <td style="font-weight:700;font-family:monospace;font-size:12px;">${j.vm_name}</td>
+        <td>${tpill(j.target)}</td>
+        <td><div style="font-weight:800;color:var(--tl);">${fmtDur(j.duration_s)}</div><div class="str" style="margin-top:3px;"><div class="sfill" style="width:${pct}%;background:var(--tl);"></div></div></td>
+        <td style="font-weight:800;color:${scolor};">${sc?sc+'/100':'—'}</td>
+        <td class="mono" style="font-size:11px;">${j.started_at?new Date(j.started_at).toLocaleString('fr-FR'):'—'}</td>
+        <td class="mono" style="font-size:11px;">${j.completed_at?new Date(j.completed_at).toLocaleString('fr-FR'):'—'}</td>
+        <td><button class="btn btn-xs" onclick="showTimelineByID(\'${j.job_id}\')">Timeline</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+  cPhases.data.labels=done.slice(0,8).map(j=>j.vm_name.slice(0,10));
+  cPhases.data.datasets[0].data=done.slice(0,8).map(j=>j.duration_s||0);
+  cPhases.update();
+}
+function jobsTable(jobs,ext=false){
+  return`<table class="tbl"><thead><tr><th>VM</th><th>Plateforme</th>${ext?'<th>Mode</th>':''}<th>Statut</th><th>Score</th><th>Durée</th><th>Instance</th><th>Actions</th></tr></thead><tbody>
+    ${jobs.map(j=>{
+      const sc=j.perf_score!=null?j.perf_score.toFixed(1):null;
+      const scolor=!sc?'#E5E7EB':j.perf_score>=80?'#10B981':j.perf_score>=60?'#F59E0B':'#EF4444';
+      const sbar=sc?`<div class="sbar"><div class="str"><div class="sfill" style="width:${sc}%;background:${scolor}"></div></div><span style="font-size:11px;font-weight:800;color:${scolor};min-width:32px;text-align:right;">${sc}</span></div>`:'<span style="color:var(--tx3);">—</span>';
+      const iid=j.instance_id?`<span class="mono" style="font-size:10px;">${j.instance_id.slice(0,10)}…</span>`:'—';
+      let acts=`<button class="btn btn-xs btn-info" onclick='showReport("${j.job_id}")' ${!sc?'disabled':''}>Perf.</button> `;
+      acts+=`<button class="btn btn-xs" onclick="showTimelineByID(\'${j.job_id}\')">TL</button> `;
+      if(j.instance_id)acts+=`<button class="btn btn-xs btn-or" onclick="openActionsByID(\'${j.job_id}\')">Gérer</button> `;
+      if(j.status==='pending')acts+=`<button class="btn btn-xs btn-danger" onclick='cancelJob("${j.job_id}")'>Annuler</button>`;
+      return`<tr>
+        <td style="font-weight:700;color:var(--bl);font-family:monospace;font-size:12px;">${j.vm_name}${getJobProjectBadge(j)}</td>
+        <td>${tpill(j.target)}</td>
+        ${ext?`<td style="color:var(--tx2);font-size:11px;">${j.mode}</td>`:''}
+        <td><span class="badge ${j.status}">${j.status}</span></td>
+        <td style="min-width:110px;">${sbar}</td>
+        <td style="font-weight:600;color:var(--tl);">${j.duration_s?fmtDur(j.duration_s):'—'}</td>
+        <td>${iid}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap;">${acts}</td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+function tpill(t){return`<span class="tpill ${t}">${t==='redhat'?'Red Hat':t==='huawei'?'Huawei':'Custom'}</span>`;}
+function updateBadge(){const n=allJobs.filter(j=>!['completed','failed','rolled_back','cancelled','pending'].includes(j.status)).length;const b=document.getElementById('nb-run');b.textContent=n;b.style.display=n>0?'':'none';}
+function populatePerfSel(){const sel=document.getElementById('perf-sel');const done=allJobs.filter(j=>j.status==='completed'&&j.perf_score!=null);sel.innerHTML='<option value="">-- Sélectionner un job --</option>'+done.map(j=>`<option value="${j.job_id}">${j.vm_name} (${j.perf_score?.toFixed(1)}/100)</option>`).join('');}
+async function loadPerfReport(jid){if(!jid)return;try{await showReport(jid);}catch(e){}}
+
+// ══ CHARTS ════════════════════════════════════════════════════
+function initCharts(){
+  const gc='#F3F4F7',tc='#6B7280';
+  cStatus=new Chart(document.getElementById('c-status'),{type:'doughnut',data:{labels:[],datasets:[{data:[],backgroundColor:[],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'right',labels:{color:tc,font:{size:11},padding:9}}}}});
+  cPerf=new Chart(document.getElementById('c-perf'),{type:'bar',data:{labels:[],datasets:[{data:[],backgroundColor:[],borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,grid:{color:gc},ticks:{color:tc}},x:{grid:{display:false},ticks:{color:tc,maxRotation:30}}}}});
+  const bo=()=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:gc},ticks:{color:tc}},x:{grid:{display:false},ticks:{color:tc}}}});
+  cCpu=new Chart(document.getElementById('c-cpu'),{type:'bar',data:{labels:['VMware','OpenStack'],datasets:[{data:[0,0],backgroundColor:['#FF6600','#3B82F6'],borderRadius:5}]},options:bo()});
+  cDisk=new Chart(document.getElementById('c-disk'),{type:'bar',data:{labels:['VMware','OpenStack'],datasets:[{data:[0,0],backgroundColor:['#FF6600','#3B82F6'],borderRadius:5}]},options:bo()});
+  cMem=new Chart(document.getElementById('c-mem'),{type:'bar',data:{labels:['VMware','OpenStack'],datasets:[{data:[0,0],backgroundColor:['#FF6600','#3B82F6'],borderRadius:5}]},options:bo()});
+  cNet=new Chart(document.getElementById('c-net'),{type:'bar',data:{labels:['VMware','OpenStack'],datasets:[{data:[0,0],backgroundColor:['#FF6600','#3B82F6'],borderRadius:5}]},options:bo()});
+  cPhases=new Chart(document.getElementById('c-phases'),{type:'bar',data:{labels:[],datasets:[{label:'Durée (s)',data:[],backgroundColor:'#FF6600',borderRadius:5}]},options:{...bo(),indexAxis:'y'}});
+}
+function updateStatus(bs){const cm={pending:'#9CA3AF',completed:'#10B981',failed:'#EF4444',extracting:'#3B82F6',converting:'#3B82F6',deploying:'#3B82F6',evaluating:'#8B5CF6',optimizing:'#8B5CF6',rolled_back:'#F59E0B'};const lbs=Object.keys(bs);cStatus.data.labels=lbs;cStatus.data.datasets[0].data=lbs.map(l=>bs[l]);cStatus.data.datasets[0].backgroundColor=lbs.map(l=>cm[l]||'#ccc');cStatus.update();}
+function updatePerf(){const done=allJobs.filter(j=>j.perf_score!=null).slice(0,8);cPerf.data.labels=done.map(j=>j.vm_name.slice(0,10));cPerf.data.datasets[0].data=done.map(j=>j.perf_score);cPerf.data.datasets[0].backgroundColor=done.map(j=>j.perf_score>=80?'#10B981':j.perf_score>=60?'#F59E0B':'#EF4444');cPerf.update();}
+function updatePerfCharts(cs){const f=kw=>cs.find(c=>c.metric.toLowerCase().includes(kw));const u=(ch,c)=>{if(c){ch.data.datasets[0].data=[c.vmware,c.openstack];ch.update();}};u(cCpu,f('cpu')||f('events'));u(cDisk,f('iops')||f('disk'));u(cMem,f('mem')||f('bandwidth'));u(cNet,f('tcp')||f('network')||f('mbps'));}
+
+// ══ LOGS ══════════════════════════════════════════════════════
+function log(mod,event,level='INFO'){const t=new Date().toTimeString().slice(0,8);allLogs.unshift({t,mod,event,level});if(allLogs.length>200)allLogs.pop();renderLogs();}
+function renderLogs(){const f=document.getElementById('lf')?.value||'';const box=document.getElementById('logbox');const rows=(f?allLogs.filter(l=>l.level===f):allLogs).slice(0,100);box.innerHTML=rows.map(l=>`<div class="ll ${l.level}"><span class="lt">${l.t}</span><span class="lm">[${l.mod}]</span><span class="le">${l.event}</span></div>`).join('')||'<div style="color:var(--tx3);padding:8px;">Aucun log</div>';}
+
+// ══ MODAL ═════════════════════════════════════════════════════
+function cm(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mbk').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ══ TOAST ═════════════════════════════════════════════════════
+let tt;function toast(msg,type='info'){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(tt);tt=setTimeout(()=>t.className=type,3500);}
+
+// ══ UTILS ═════════════════════════════════════════════════════
+function fmtDur(s){if(!s)return'—';s=Math.round(s);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m '+Math.round(s%60)+'s';return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';}
+async function api(url){const r=await fetch(API+url);const d=await r.json();if(!r.ok)throw new Error(d.error||r.statusText);return d;}
+
+
+// ══ AUTH & ADMIN ══════════════════════════════════════════════
+let currentUser = null;
+
+async function initAuth(){
+  const tok = sessionStorage.getItem('auth_token');
+  const usr = sessionStorage.getItem('current_user');
+
+  // Pas de token → rediriger vers login après un court délai
+  if(!tok){
+    setTimeout(()=>{ window.location.href = '/login'; }, 200);
+    return false;
+  }
+
+  // Charger l'utilisateur depuis sessionStorage immédiatement
+  try {
+    currentUser = usr ? JSON.parse(usr) : null;
+  } catch(e) { currentUser = null; }
+
+  if(currentUser){ renderCurrentUser(); applyRBAC(); }
+
+  // Vérifier le token côté serveur
+  try{
+    const r = await fetch('/api/v1/auth/me', {
+      headers:{ 'Authorization':'Bearer '+tok, 'Content-Type':'application/json' }
+    });
+
+    if(r.status === 401 || r.status === 403){
+      // Token expiré ou invalide → nettoyer et aller au login
+      sessionStorage.clear();
+      window.location.href = '/login';
+      return false;
+    }
+
+    if(r.ok){
+      const u = await r.json();
+      currentUser = u;
+      sessionStorage.setItem('current_user', JSON.stringify(u));
+      renderCurrentUser();
+      applyRBAC();
+    }
+    // Si autre erreur serveur (500 etc.) → continuer quand même
+    return true;
+
+  } catch(e){
+    // Erreur réseau → continuer en mode dégradé
+    console.warn('Auth check error:', e);
+    return true;
+  }
+}
+
+function authHeaders(){
+  const tok = sessionStorage.getItem('auth_token');
+  return tok ? { 'Authorization':'Bearer '+tok, 'Content-Type':'application/json' } : { 'Content-Type':'application/json' };
+}
+
+function applyRBAC(){
+  if(!currentUser) return;
+  const role = currentUser.role;
+  const isAdmin = ['admin','super_admin'].includes(role);
+  const isSuperAdmin = role === 'super_admin';
+
+  // Afficher le bouton admin si admin+
+  const adminBtn = document.getElementById('nb-admin');
+  if(adminBtn) adminBtn.style.display = isAdmin ? '' : 'none';
+
+  // Cacher les actions de migration si read_only
+  if(role === 'read_only'){
+    document.querySelectorAll('.btn-or').forEach(b => {
+      if(b.textContent.includes('Migration') || b.textContent.includes('Migrer') || b.textContent.includes('Lancer'))
+        b.style.display = 'none';
+    });
+  }
+
+  // Mettre à jour l'avatar utilisateur dans la sidebar
+  const av = document.querySelector('.ua');
+  if(av && currentUser.first_name && currentUser.last_name)
+    av.textContent = (currentUser.first_name[0]||'') + (currentUser.last_name[0]||'');
+  const un = document.querySelector('.un');
+  if(un) un.textContent = currentUser.full_name || currentUser.login;
+  const ur = document.querySelector('.ur');
+  if(ur) ur.textContent = {
+    super_admin:'Super Admin',admin:'Admin',operator:'Opérateur',read_only:'Lecture seule'
+  }[role] || role;
+}
+
+function renderCurrentUser(){
+  const c = document.getElementById('cur-user-card');
+  if(!c || !currentUser) return;
+  const roleLbl = {super_admin:'Super Administrateur',admin:'Administrateur',operator:'Opérateur',read_only:'Lecture seule'}[currentUser.role]||currentUser.role;
+  const roleColor = {super_admin:'var(--or)',admin:'var(--bl)',operator:'var(--tl)',read_only:'var(--tx3)'}[currentUser.role]||'var(--tx2)';
+  c.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0;">
+        ${(currentUser.first_name||'?')[0]}${(currentUser.last_name||'')[0]}
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">${currentUser.full_name||currentUser.login}</div>
+        <div style="font-size:12px;color:var(--tx2);">CUID: ${currentUser.cuid||'—'} · ${currentUser.function||'—'}</div>
+        <div style="margin-top:3px;"><span style="background:${roleColor}18;color:${roleColor};border:1px solid ${roleColor}40;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">${roleLbl}</span></div>
+      </div>
+    </div>`;
+}
+
+async function doLogout(){
+  const tok = sessionStorage.getItem('auth_token');
+  if(tok) await fetch('/api/v1/auth/logout', { method:'POST', headers:authHeaders() }).catch(()=>{});
+  sessionStorage.removeItem('auth_token');
+  sessionStorage.removeItem('current_user');
+  if(window.location.pathname !== '/login') window.location.href = '/login';
+}
+
+// ── Gestion utilisateurs (admin) ──────────────────────────────
+async function loadUsers(){
+  try{
+    const r = await fetch('/api/v1/admin/users', { headers: authHeaders() });
+    if(!r.ok){ toast('Accès refusé','error'); return; }
+    const d = await r.json();
+    renderUsersTable(d.users||[]);
+  } catch(e){ toast('Erreur chargement utilisateurs','error'); }
+}
+
+function renderUsersTable(users){
+  const c = document.getElementById('users-tbl');
+  if(!users.length){ c.innerHTML='<div style="padding:28px;text-align:center;color:var(--tx3);">Aucun utilisateur</div>'; return; }
+  const roleLbl = {super_admin:'Super Admin',admin:'Admin',operator:'Opérateur',read_only:'Lecture seule'};
+  const roleColor = {super_admin:'var(--or)',admin:'var(--bl)',operator:'var(--tl)',read_only:'var(--tx3)'};
+  c.innerHTML = `<table class="tbl"><thead><tr>
+    <th>Utilisateur</th><th>CUID</th><th>Fonction</th><th>Rôle</th>
+    <th>Plateformes</th><th>Statut</th><th>Dernier login</th><th>Actions</th>
+  </tr></thead><tbody>
+  ${users.map(u => {
+    const rc = roleColor[u.role]||'var(--tx2)';
+    const rl = roleLbl[u.role]||u.role;
+    const targets = u.allowed_targets?.length ? u.allowed_targets.join(', ') : 'Toutes';
+    const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais';
+    const isDefault = u.login === 'Gos_Cloud';
+    const canEdit = currentUser && ['admin','super_admin'].includes(currentUser.role);
+    return `<tr>
+      <td>
+        <div style="font-weight:700;">${u.first_name} ${u.last_name}</div>
+        <div style="font-size:11px;color:var(--tx2);font-family:monospace;">${u.login}</div>
+      </td>
+      <td style="font-family:monospace;font-size:12px;">${u.cuid}</td>
+      <td style="font-size:12px;color:var(--tx2);">${u.function||'—'}</td>
+      <td><span style="background:${rc}18;color:${rc};border:1px solid ${rc}40;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">${rl}</span></td>
+      <td style="font-size:12px;color:var(--tx2);">${targets}</td>
+      <td>${u.is_active
+        ? '<span class="badge b-ok">Actif</span>'+(u.must_change_password?'<span class="badge b-warn" style="margin-left:4px;">Chg. MDP</span>':'')
+        : '<span class="badge b-err">Désactivé</span>'}</td>
+      <td style="font-size:12px;color:var(--tx2);">${lastLogin}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${canEdit && !isDefault ? `<button class="btn btn-xs btn-warn" onclick="toggleUser('${u.login}',${u.is_active})">${u.is_active?'Désactiver':'Activer'}</button>` : ''}
+        ${canEdit ? `<button class="btn btn-xs btn-info" onclick="resetUserPwd('${u.login}')">Réinit. MDP</button>` : ''}
+        ${canEdit && !isDefault && u.login !== currentUser?.login ? `<button class="btn btn-xs btn-danger" onclick="deleteUser('${u.login}')">Supprimer</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+async function createUser(){
+  const fn   = document.getElementById('a-fn').value.trim();
+  const ln   = document.getElementById('a-ln').value.trim();
+  const cuid = document.getElementById('a-cuid').value.trim();
+  const func = document.getElementById('a-func').value.trim();
+  const lgn  = document.getElementById('a-login').value.trim();
+  const role = document.getElementById('a-role').value;
+  const pwd  = document.getElementById('a-pwd').value;
+  const must = document.getElementById('a-must-change').checked;
+  const targets = [...document.querySelectorAll('.a-target:checked')].map(c=>c.value);
+
+  if(!fn||!ln||!cuid||!func||!lgn||!pwd){ toast('Tous les champs sont obligatoires','error'); return; }
+
+  try{
+    const r = await fetch('/api/v1/admin/users', {
+      method:'POST', headers: authHeaders(),
+      body: JSON.stringify({ login:lgn, cuid, first_name:fn, last_name:ln, function:func, role, password:pwd, allowed_targets:targets, must_change_password:must }),
+    });
+    const d = await r.json();
+    if(!r.ok){ toast(d.error||'Erreur création','error'); return; }
+    toast(`Utilisateur "${lgn}" créé avec succès`,'success');
+    log('admin',`Création: ${fn} ${ln} (${lgn}) rôle=${role}`,'INFO');
+    // Reset form
+    ['a-fn','a-ln','a-cuid','a-func','a-login','a-pwd'].forEach(id=>document.getElementById(id).value='');
+    document.querySelectorAll('.a-target').forEach(c=>c.checked=false);
+    loadUsers();
+  } catch(e){ toast('Erreur réseau','error'); }
+}
+
+async function toggleUser(login, currentActive){
+  if(!confirm(`${currentActive?'Désactiver':'Activer'} le compte ${login} ?`)) return;
+  try{
+    const r = await fetch('/api/v1/admin/users/'+login+'/toggle-active', { method:'POST', headers: authHeaders() });
+    const d = await r.json();
+    toast(d.message||'OK', r.ok?'success':'error');
+    if(r.ok) loadUsers();
+  } catch(e){ toast('Erreur','error'); }
+}
+
+async function resetUserPwd(login){
+  const newPwd = prompt(`Définir un nouveau mot de passe pour "${login}" :\n(L'utilisateur devra le changer à la prochaine connexion)`);
+  if(!newPwd) return;
+  try{
+    const r = await fetch('/api/v1/admin/users/'+login+'/set-password', {
+      method:'POST', headers: authHeaders(),
+      body: JSON.stringify({ new_password: newPwd, must_change: true }),
+    });
+    const d = await r.json();
+    toast(d.message||d.error, r.ok?'success':'error');
+    if(r.ok) loadUsers();
+  } catch(e){ toast('Erreur','error'); }
+}
+
+async function deleteUser(login){
+  if(!confirm(`Supprimer définitivement le compte "${login}" ? Cette action est irréversible.`)) return;
+  try{
+    const r = await fetch('/api/v1/admin/users/'+login, { method:'DELETE', headers: authHeaders() });
+    const d = await r.json();
+    toast(d.message||d.error, r.ok?'success':'error');
+    if(r.ok) loadUsers();
+  } catch(e){ toast('Erreur','error'); }
+}
+
+async function changeSelfPwd(){
+  const cur  = document.getElementById('cp-cur').value;
+  const nw   = document.getElementById('cp-new').value;
+  const conf = document.getElementById('cp-conf').value;
+  const errEl = document.getElementById('cp-err');
+  errEl.style.display = 'none';
+
+  if(!cur||!nw||!conf){ errEl.textContent='Tous les champs sont requis'; errEl.style.display=''; return; }
+  if(nw!==conf){ errEl.textContent='Les mots de passe ne correspondent pas'; errEl.style.display=''; return; }
+
+  try{
+    const r = await fetch('/api/v1/auth/change-password', {
+      method:'POST', headers: authHeaders(),
+      body: JSON.stringify({ current_password:cur, new_password:nw }),
+    });
+    const d = await r.json();
+    if(!r.ok){ errEl.textContent=d.error||'Erreur'; errEl.style.display=''; return; }
+    toast('Mot de passe modifié avec succès','success');
+    ['cp-cur','cp-new','cp-conf'].forEach(id=>document.getElementById(id).value='');
+    nav('dashboard');
+  } catch(e){ errEl.textContent='Erreur réseau'; errEl.style.display=''; }
+}
+
+function checkPwdStrength(pwd){
+  let s=0;
+  if(pwd.length>=8)s++;if(/[A-Z]/.test(pwd))s++;if(/[0-9]/.test(pwd))s++;if(/[^A-Za-z0-9]/.test(pwd))s++;
+  const bar = document.getElementById('cp-bar');
+  const lbl = document.getElementById('cp-lbl');
+  const c=['#EF4444','#F59E0B','#F59E0B','#10B981','#10B981'];
+  const l=['Très faible','Faible','Moyen','Fort','Très fort'];
+  if(bar){ bar.style.width=s*25+'%'; bar.style.background=c[s]||'#ccc'; }
+  if(lbl){ lbl.textContent=l[s]||''; lbl.style.color=c[s]||''; }
+}
+
+function genPwd(){
+  const chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  let pwd='';
+  // Garantir les critères
+  pwd += 'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random()*22)];
+  pwd += '23456789'[Math.floor(Math.random()*8)];
+  pwd += '!@#$%'[Math.floor(Math.random()*5)];
+  for(let i=0;i<7;i++) pwd += chars[Math.floor(Math.random()*chars.length)];
+  // Mélanger
+  pwd = pwd.split('').sort(()=>Math.random()-0.5).join('');
+  document.getElementById('a-pwd').value = pwd;
+  document.getElementById('a-pwd').type = 'text';
+  setTimeout(()=>{ const el=document.getElementById('a-pwd'); if(el)el.type='password'; }, 3000);
+  toast('Mot de passe généré (affiché 3s)','info');
+}
+
+// Remplacer fetch API pour inclure auth header automatiquement
+const _origFetch = window.fetch;
+window.fetch = function(url, opts={}){
+  if(url && url.startsWith('/api/v1/')){
+    const tok = sessionStorage.getItem('auth_token');
+    if(tok){
+      opts.headers = opts.headers || {};
+      if(!opts.headers['Authorization']) opts.headers['Authorization'] = 'Bearer '+tok;
+    }
+  }
+  return _origFetch(url, opts);
+};
+
+
+// ══ NAVIGATEUR vCenter → ESXi → VMs ═══════════════════════════
+let _selectedVMs = new Set();   // VMs sélectionnées (noms)
+let _allVMs = [];               // liste complète VMs de l'ESXi courant
+let _currentVCId = null;
+let _currentHostId = null;
+
+function onVCChange(){
+  _currentVCId = document.getElementById('f-vc').value;
+  _currentHostId = null;
+  _selectedVMs.clear();
+  document.getElementById('btn-load-hosts').disabled = !_currentVCId;
+
+  // Reset ESXi list
+  const esxiList = document.getElementById('esxi-list');
+  if(esxiList) esxiList.innerHTML = '<div style="padding:16px;text-align:center;color:var(--tx3);font-size:12px;">Cliquez "Charger ESXi"</div>';
+
+  // Reset VM list
+  const vmWrap = document.getElementById('vm-list-wrap');
+  if(vmWrap) vmWrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Sélectionnez un ESXi pour voir ses VMs</div>';
+
+  renderBasket();
+  updateVCButton();
+}
+
+async function loadHostsForVC(){
+  const vcId = document.getElementById('f-vc').value;
+  if(!vcId) return;
+  _currentVCId = vcId;
+
+  const esxiList = document.getElementById('esxi-list');
+  esxiList.innerHTML = '<div style="padding:16px;text-align:center;color:var(--tx3);font-size:12px;">Chargement des ESXi…</div>';
+
+  // Afficher section ESXi
+  const stepEsxi = document.getElementById('step-esxi');
+  if(stepEsxi) stepEsxi.style.display = '';
+
+  try{
+    const d = await api('/api/v1/connections/vcenter/'+vcId+'/hosts');
+    if(d.error){ toast('Erreur: '+d.error,'error'); return; }
+
+    const hosts = d.hosts || [];
+    if(!hosts.length){
+      esxiList.innerHTML = '<div style="padding:16px;text-align:center;color:var(--tx3);font-size:12px;">Aucun ESXi trouvé</div>';
+      return;
+    }
+
+    esxiList.innerHTML = hosts.map(h => {
+      const stateColor = h.connection_state === 'connected' ? 'var(--gr)' : 'var(--re)';
+      const maintBadge = h.in_maintenance ? '<span style="background:#FEF2F2;color:var(--re);font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;">MAINTENANCE</span>' : '';
+      const dsInfo = h.datastores?.length
+        ? `<div style="font-size:10px;color:var(--tx3);margin-top:2px;">${h.datastores.map(ds=>ds.name).join(', ')}</div>`
+        : '';
+      return `<div class="esxi-card" onclick="selectHost('${h.mor_id}','${h.name}')"
+          id="esxi-${h.mor_id.replace(/[^a-z0-9]/gi,'_')}"
+          style="border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all 0.15s;background:var(--white);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${stateColor};flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:12px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.name}${maintBadge}</div>
+              <div style="font-size:10px;color:var(--tx2);">${h.cpu_model||''} · ${h.cpu_cores} cores · ${h.memory_gb}GB RAM</div>
+              ${dsInfo}
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:13px;font-weight:800;color:var(--or);">${h.vm_count}</div>
+              <div style="font-size:10px;color:var(--tx3);">VMs</div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    toast(hosts.length + ' ESXi trouvés', 'success');
+  } catch(e){ toast('Erreur chargement ESXi: '+e.message,'error'); }
+}
+
+async function selectHost(morId, hostName){
+  _currentHostId = morId;
+
+  // Highlight selected ESXi
+  document.querySelectorAll('.esxi-card').forEach(c => {
+    c.style.background   = 'var(--white)';
+    c.style.borderColor  = 'var(--bd)';
+  });
+  const sel = document.getElementById('esxi-'+morId.replace(/[^a-z0-9]/gi,'_'));
+  if(sel){
+    sel.style.background  = 'var(--or-p)';
+    sel.style.borderColor = 'var(--or)';
+  }
+
+  // Load VMs
+  const vmWrap = document.getElementById('vm-list-wrap');
+  vmWrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Chargement des VMs de '+hostName+'…</div>';
+
+  try{
+    const d = await api('/api/v1/connections/vcenter/'+_currentVCId+'/hosts/'+morId+'/vms');
+    _allVMs = d.vms || [];
+    renderVMList(_allVMs);
+    const badge = document.getElementById('vm-count-badge');
+    if(badge){ badge.textContent = _allVMs.length + ' VMs'; badge.style.display = ''; }
+    toast(_allVMs.length + ' VMs sur ' + hostName, 'info');
+  } catch(e){ toast('Erreur chargement VMs: '+e.message,'error'); }
+}
+
+function filterVMList(query){
+  if(!query){ renderVMList(_allVMs); return; }
+  const q = query.toLowerCase();
+  const filtered = _allVMs.filter(v =>
+    v.name.toLowerCase().includes(q) ||
+    (v.guest_os||'').toLowerCase().includes(q)
+  );
+  renderVMList(filtered);
+}
+
+function renderVMList(vms){
+  const wrap = document.getElementById('vm-list-wrap');
+  if(!vms.length){
+    wrap.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Aucune VM trouvée</div>';
+    return;
+  }
+  wrap.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<thead><tr style="background:var(--bg);">' +
+    '<th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;width:24px;"></th>' +
+    '<th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;">VM</th>' +
+    '<th style="padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;">OS</th>' +
+    '<th style="padding:6px 6px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;">vCPU</th>' +
+    '<th style="padding:6px 6px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;">RAM</th>' +
+    '<th style="padding:6px 6px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--tx2);font-weight:600;">État</th>' +
+    '</tr></thead><tbody>' +
+    vms.map(v => {
+      const checked = _selectedVMs.has(v.name);
+      const powered = v.power_state === 'poweredOn';
+      const stRow = checked ? 'background:var(--or-p);' : '';
+      const snapWarn = v.has_snapshots ? '<span title="Snapshots présents" style="color:var(--am);margin-left:3px;">⚠</span>' : '';
+      return `<tr style="border-bottom:1px solid var(--bd);cursor:pointer;${stRow}" onclick="toggleVM('${v.name}',this)">
+        <td style="padding:7px 10px;">
+          <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleVM('${v.name}',this.closest('tr'))"
+            style="accent-color:var(--or);width:14px;height:14px;">
+        </td>
+        <td style="padding:7px 10px;font-weight:600;color:var(--bl);font-family:monospace;">${v.name}${snapWarn}</td>
+        <td style="padding:7px 10px;color:var(--tx2);">${(v.guest_os||'—').slice(0,22)}</td>
+        <td style="padding:7px 6px;text-align:center;">${v.vcpus||'—'}</td>
+        <td style="padding:7px 6px;text-align:center;">${v.memory_mb?((v.memory_mb/1024).toFixed(0)+'G'):'—'}</td>
+        <td style="padding:7px 6px;text-align:center;">
+          <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;
+            background:${powered?'#F0FDF4':'#F3F4F6'};
+            color:${powered?'#059669':'#6B7280'};">
+            ${powered?'ON':'OFF'}
+          </span>
+        </td>
+      </tr>`;
+    }).join('') +
+    '</tbody></table>';
+}
+
+function toggleVM(vmName, row){
+  if(_selectedVMs.has(vmName)){
+    _selectedVMs.delete(vmName);
+    if(row) row.style.background = '';
+    if(row) { const cb = row.querySelector('input[type=checkbox]'); if(cb) cb.checked=false; }
+  } else {
+    _selectedVMs.add(vmName);
+    if(row) row.style.background = 'var(--or-p)';
+    if(row) { const cb = row.querySelector('input[type=checkbox]'); if(cb) cb.checked=true; }
+  }
+  renderBasket();
+  syncVMInput();
+}
+
+function renderBasket(){
+  const basket = document.getElementById('vm-basket');
+  const wrap   = document.getElementById('vm-basket-wrap');
+  if(!basket || !wrap) return;
+
+  if(_selectedVMs.size === 0){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  basket.innerHTML = [..._selectedVMs].map(name =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--or);color:white;
+       padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;">
+      ${name}
+      <button onclick="removeVM('${name}')" style="background:none;border:none;color:white;cursor:pointer;
+        font-size:14px;line-height:1;padding:0;margin-left:2px;opacity:0.8;">×</button>
+    </span>`
+  ).join('');
+}
+
+function removeVM(name){
+  _selectedVMs.delete(name);
+  renderBasket();
+  syncVMInput();
+  // Décocher dans la table
+  renderVMList(_allVMs);
+}
+
+function syncVMInput(){
+  const inp = document.getElementById('f-vms');
+  if(inp) inp.value = [..._selectedVMs].join(', ');
+}
+
+function updateVCButton(){
+  const b = document.getElementById('btn-load-hosts');
+  if(b) b.disabled = !document.getElementById('f-vc')?.value;
+}
+
+
+// ══ PROJETS ═══════════════════════════════════════════════════
+let _projects = [];
+let _selectedProjectId = null;
+
+async function loadProjects(){
+  const status = document.getElementById('pj-filter-status')?.value || '';
+  try{
+    const d = await api('/api/v1/projects'+(status?'?status='+status:''));
+    _projects = d.projects || [];
+    renderProjectList();
+    updateProjectStats();
+  } catch(e){ toast('Erreur chargement projets','error'); }
+}
+
+function updateProjectStats(){
+  const total  = _projects.length;
+  const inprog = _projects.filter(p=>p.status==='in_progress').length;
+  const done   = _projects.filter(p=>p.status==='completed').length;
+  const plan   = _projects.filter(p=>p.status==='planned').length;
+  const el = id => document.getElementById(id);
+  if(el('ps-total'))  el('ps-total').textContent  = total;
+  if(el('ps-inprog')) el('ps-inprog').textContent = inprog;
+  if(el('ps-done'))   el('ps-done').textContent   = done;
+  if(el('ps-plan'))   el('ps-plan').textContent   = plan;
+}
+
+function renderProjectList(){
+  const c = document.getElementById('proj-list');
+  if(!c) return;
+  if(!_projects.length){
+    c.innerHTML='<div style="padding:32px;text-align:center;color:var(--tx3);">Aucun projet</div>';
+    return;
+  }
+  const statusColor = {
+    in_progress:'#3B82F6', planned:'#9CA3AF',
+    completed:'#10B981',   suspended:'#F59E0B',
+  };
+  const statusLabel = {
+    in_progress:'En cours', planned:'Planifié',
+    completed:'Terminé',    suspended:'Suspendu',
+  };
+  const prioColor = {critical:'#EF4444',high:'#F59E0B',medium:'#3B82F6',low:'#9CA3AF'};
+  const prioLabel = {critical:'Critique',high:'Haute',medium:'Moyenne',low:'Faible'};
+
+  c.innerHTML = _projects.map(p => {
+    const sc  = statusColor[p.status]||'#9CA3AF';
+    const sl  = statusLabel[p.status]||p.status;
+    const pc  = prioColor[p.priority]||'#9CA3AF';
+    const pl  = prioLabel[p.priority]||p.priority;
+    const bar = p.job_count>0
+      ? `<div style="height:4px;background:var(--bd);border-radius:2px;overflow:hidden;margin-top:4px;">
+           <div style="height:100%;width:${Math.min(100,p.job_count*10)}%;background:${sc};border-radius:2px;"></div>
+         </div>`
+      : '';
+    const selected = p.project_id === _selectedProjectId;
+    return `<div onclick="selectProject('${p.project_id}')"
+        style="padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;
+               background:${selected?'var(--or-p)':'var(--white)'};transition:background 0.13s;">
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+            <span style="font-weight:700;font-size:13px;">${p.name}</span>
+            <span style="background:${sc}18;color:${sc};border:1px solid ${sc}40;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">${sl}</span>
+            <span style="background:${pc}18;color:${pc};padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">${pl}</span>
+          </div>
+          <div style="font-size:11px;color:var(--tx2);">
+            <span style="font-family:monospace;font-weight:600;color:var(--or);">[${p.code}]</span>
+            ${p.chef_de_projet_name?' · '+p.chef_de_projet_name:''}
+            ${p.team?' · '+p.team:''}
+          </div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:2px;">${p.description||''}</div>
+          ${bar}
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:18px;font-weight:800;color:${sc};">${p.job_count}</div>
+          <div style="font-size:10px;color:var(--tx3);">migration${p.job_count>1?'s':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectProject(projId){
+  _selectedProjectId = projId;
+  renderProjectList(); // rehighlight
+
+  try{
+    const d = await api('/api/v1/projects/'+projId+'/stats');
+    renderProjectDetail(d);
+    document.getElementById('proj-detail-card').style.display = '';
+    document.getElementById('proj-detail-card').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(e){ toast('Erreur chargement détail projet','error'); }
+}
+
+function renderProjectDetail(d){
+  const title = document.getElementById('proj-detail-title');
+  if(title) title.textContent = d.name + ' ['+d.code+']';
+
+  const sc  = d.overall_score;
+  const prg = d.progress_pct || 0;
+  const prioColor = {critical:'#EF4444',high:'#F59E0B',medium:'#3B82F6',low:'#9CA3AF'};
+  const prioLabel = {critical:'Critique',high:'Haute',medium:'Moyenne',low:'Faible'};
+
+  let html = `
+  <div class="g3" style="margin-bottom:16px;">
+    <div class="mchip"><div class="mc-lbl">Avancement</div>
+      <div class="mc-val" style="color:var(--or);">${prg.toFixed(0)}%</div>
+      <div style="height:5px;background:var(--bd);border-radius:3px;margin:4px 0;overflow:hidden;">
+        <div style="height:100%;width:${prg}%;background:var(--or);border-radius:3px;"></div>
+      </div>
+      <div class="mc-sub">${d.completed||0}/${d.total_jobs||0} migrations</div>
+    </div>
+    <div class="mchip"><div class="mc-lbl">Score moyen</div>
+      <div class="mc-val" style="color:${d.avg_perf_score>=80?'#10B981':d.avg_perf_score>=60?'#F59E0B':'#EF4444'};">
+        ${d.avg_perf_score!=null?d.avg_perf_score+'/100':'—'}
+      </div>
+      <div class="mc-sub">performance post-migration</div>
+    </div>
+    <div class="mchip"><div class="mc-lbl">Durée totale</div>
+      <div class="mc-val" style="color:var(--tl);">${d.total_duration_s?fmtDur(d.total_duration_s):'—'}</div>
+      <div class="mc-sub">moy. ${d.avg_duration_s?fmtDur(d.avg_duration_s):'-'}/migration</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:var(--tx2);"><strong>Chef de projet:</strong> ${d.chef_de_projet_name||'—'} (${d.chef_de_projet_cuid||'—'})</div>
+    <div style="font-size:12px;color:var(--tx2);"><strong>Équipe:</strong> ${d.team||'—'}</div>
+    <div style="font-size:12px;color:var(--tx2);"><strong>Priorité:</strong> <span style="color:${prioColor[d.priority]||'#9CA3AF'};font-weight:700;">${prioLabel[d.priority]||d.priority}</span></div>
+    ${d.planned_start?`<div style="font-size:12px;color:var(--tx2);"><strong>Début:</strong> ${new Date(d.planned_start).toLocaleDateString('fr-FR')}</div>`:''}
+    ${d.planned_end?`<div style="font-size:12px;color:var(--tx2);"><strong>Fin prévue:</strong> ${new Date(d.planned_end).toLocaleDateString('fr-FR')}</div>`:''}
+  </div>
+
+  ${d.description?`<div style="font-size:13px;color:var(--tx2);margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:7px;">${d.description}</div>`:''}
+
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tx2);margin-bottom:8px;">Migrations du projet</div>`;
+
+  if(d.jobs?.length){
+    html += `<table class="tbl"><thead><tr>
+      <th>VM</th><th>Plateforme</th><th>Statut</th><th>Score</th><th>Durée</th><th>Terminée le</th><th>Actions</th>
+    </tr></thead><tbody>
+    ${d.jobs.map(j => {
+      const sc2  = j.perf_score!=null?j.perf_score.toFixed(1):null;
+      const sclr = !sc2?'#ccc':j.perf_score>=80?'#10B981':j.perf_score>=60?'#F59E0B':'#EF4444';
+      const sbar = sc2?`<div class="sbar"><div class="str"><div class="sfill" style="width:${sc2}%;background:${sclr}"></div></div><span style="font-size:11px;font-weight:800;color:${sclr};min-width:32px;text-align:right;">${sc2}</span></div>`:'<span style="color:var(--tx3);">—</span>';
+      const dt   = j.completed_at?new Date(j.completed_at).toLocaleDateString('fr-FR'):'—';
+      return `<tr>
+        <td style="font-weight:700;color:var(--bl);font-family:monospace;font-size:12px;">${j.vm_name}</td>
+        <td>${tpill(j.target)}</td>
+        <td><span class="badge ${j.status}">${j.status}</span></td>
+        <td style="min-width:110px;">${sbar}</td>
+        <td style="color:var(--tl);font-weight:600;">${j.duration_s?fmtDur(j.duration_s):'—'}</td>
+        <td style="color:var(--tx2);font-size:12px;">${dt}</td>
+        <td>
+          <button class="btn btn-xs btn-info" onclick='showReport("${j.job_id}")' ${!sc2?'disabled':''}>Perf.</button>
+          <button class="btn btn-xs btn-danger" onclick='detachJob("${d.project_id}","${j.job_id}")' style="margin-left:4px;">Retirer</button>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+  } else {
+    html += '<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">Aucune migration dans ce projet — cliquez "+ Rattacher des jobs"</div>';
+  }
+
+  if(d.notes){
+    html += `<div style="margin-top:12px;font-size:12px;color:var(--tx2);padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:7px;"><strong>Notes:</strong> ${d.notes}</div>`;
+  }
+
+  document.getElementById('proj-detail-body').innerHTML = html;
+}
+
+async function createProject(){
+  const name  = document.getElementById('pj-name')?.value.trim();
+  const code  = document.getElementById('pj-code')?.value.trim();
+  if(!name||!code){ toast('Nom et code projet requis','error'); return; }
+  const body = {
+    name, code,
+    description:          document.getElementById('pj-desc')?.value.trim()||'',
+    chef_de_projet_cuid:  document.getElementById('pj-cuid')?.value.trim()||'',
+    chef_de_projet_name:  document.getElementById('pj-chef')?.value.trim()||'',
+    team:                 document.getElementById('pj-team')?.value.trim()||'',
+    priority:             document.getElementById('pj-prio')?.value||'medium',
+    source_vcenter:       document.getElementById('pj-vc')?.value||'',
+    target_openstack:     document.getElementById('pj-os')?.value||'',
+    planned_start:        document.getElementById('pj-start')?.value||null,
+    planned_end:          document.getElementById('pj-end')?.value||null,
+    notes:                document.getElementById('pj-notes')?.value.trim()||'',
+  };
+  try{
+    const r = await fetch('/api/v1/projects',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok){ toast(d.error||'Erreur création','error'); return; }
+    toast('Projet "'+name+'" créé','success');
+    log('projects','Nouveau projet: '+code+' — '+name,'INFO');
+    ['pj-name','pj-code','pj-desc','pj-cuid','pj-chef','pj-team','pj-notes'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    loadProjects();
+  } catch(e){ toast('Erreur réseau','error'); }
+}
+
+async function detachJob(projId, jobId){
+  if(!confirm('Retirer ce job du projet ?')) return;
+  try{
+    const r = await fetch('/api/v1/projects/'+projId+'/jobs/'+jobId,{method:'DELETE',headers:authHeaders()});
+    const d = await r.json();
+    toast(d.message||d.error, r.ok?'info':'error');
+    if(r.ok) selectProject(projId);
+  } catch(e){ toast('Erreur','error'); }
+}
+
+function openAttachModal(){
+  if(!_selectedProjectId){ toast('Sélectionnez un projet','error'); return; }
+  const jobs = allJobs.filter(j => !j.project_id);
+  let html = '<div style="font-size:13px;color:var(--tx2);margin-bottom:12px;">Sélectionnez les migrations à rattacher au projet :</div>';
+  if(!jobs.length){ html += '<div style="color:var(--tx3);text-align:center;padding:20px;">Tous les jobs sont déjà rattachés à un projet</div>'; }
+  else {
+    html += '<div style="max-height:320px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;">';
+    html += jobs.map(j => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bd);">
+        <input type="checkbox" id="aj-${j.job_id}" value="${j.job_id}" style="accent-color:var(--or);width:14px;height:14px;">
+        <label for="aj-${j.job_id}" style="flex:1;cursor:pointer;">
+          <span style="font-weight:700;color:var(--bl);font-family:monospace;font-size:12px;">${j.vm_name}</span>
+          <span style="margin-left:8px;">${tpill(j.target)}</span>
+          <span class="badge ${j.status}" style="margin-left:6px;">${j.status}</span>
+        </label>
+      </div>`).join('');
+    html += '</div>';
+  }
+  document.getElementById('m-act-title').textContent = 'Rattacher des migrations au projet';
+  document.getElementById('m-act-body').innerHTML = html + (jobs.length?`
+    <div style="margin-top:14px;text-align:right;">
+      <button class="btn btn-or" onclick="doAttachJobs()">Rattacher les sélectionnés</button>
+    </div>`:'');
+  document.getElementById('m-act').classList.add('open');
+}
+
+async function doAttachJobs(){
+  const checked = [...document.querySelectorAll('[id^="aj-"]:checked')].map(c=>c.value);
+  if(!checked.length){ toast('Sélectionnez au moins un job','error'); return; }
+  let ok=0;
+  for(const jid of checked){
+    try{
+      const r = await fetch('/api/v1/projects/'+_selectedProjectId+'/jobs/'+jid,{method:'POST',headers:authHeaders()});
+      if(r.ok) ok++;
+    } catch(e){}
+  }
+  toast(ok+' migration(s) rattachée(s) au projet','success');
+  cm('m-act');
+  loadJobs();
+  selectProject(_selectedProjectId);
+}
+
+// Afficher le projet dans la table des jobs
+function getJobProjectBadge(j){
+  if(!j.project_code) return '';
+  return `<span style="background:#FFF0E6;color:var(--or-d);border:1px solid #FECACA;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;">${j.project_code}</span>`;
+}
+
+// Pré-remplir le select vCenter depuis les vCenters chargés
+function populatePJVCenterSelect(){
+  const sel = document.getElementById('pj-vc');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">-- Tous --</option>' +
+    allVCenters.map(vc=>`<option value="${vc.id}">${vc.name||vc.host}</option>`).join('');
+}
+
+
+// ══ DÉCOUVERTE DYNAMIQUE vCenter / OpenStack ══════════════════
+
+// ── Helpers UI ───────────────────────────────────────────────
+function togglePwdField(id){
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function showStep(prefix, n){
+  for(let i=1;i<=3;i++){
+    const el = document.getElementById(prefix+'-step'+i);
+    if(el) el.style.display = i<=n ? '' : 'none';
+  }
+}
+
+function setResult(id, ok, msg){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = `<span style="color:${ok?'var(--gr)':'var(--re)'};">${ok?'✓':'✗'} ${msg}</span>`;
+}
+
+function toggleOSTypeFields(){
+  const t = document.getElementById('os-type')?.value;
+  const hf = document.getElementById('os-huawei-fields');
+  if(hf) hf.style.display = t==='huawei' ? '' : 'none';
+}
+
+// ── vCenter Wizard ────────────────────────────────────────────
+async function pingVC(){
+  const host = document.getElementById('vc-host')?.value.trim();
+  const port = document.getElementById('vc-port')?.value || '443';
+  if(!host){ toast('Entrez une IP ou FQDN','error'); return; }
+  setResult('vc-ping-result', null, 'Test en cours…');
+  try{
+    const r = await fetch('/api/v1/connections/vcenter/ping', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ host, port: parseInt(port) }),
+    });
+    const d = await r.json();
+    if(d.reachable){
+      setResult('vc-ping-result', true, `Hôte joignable — ${d.latency}`);
+      showStep('vc', 2);
+      toast('vCenter joignable !','success');
+    } else {
+      setResult('vc-ping-result', false, d.error || 'Hôte injoignable');
+    }
+  } catch(e){ setResult('vc-ping-result', false, 'Erreur réseau'); }
+}
+
+async function testVCAuth(){
+  const host = document.getElementById('vc-host')?.value.trim();
+  const port = parseInt(document.getElementById('vc-port')?.value || '443');
+  const user = document.getElementById('vc-user')?.value.trim();
+  const pwd  = document.getElementById('vc-pwd')?.value;
+  if(!user || !pwd){ toast('Renseignez utilisateur et mot de passe','error'); return; }
+  setResult('vc-auth-result', null, 'Authentification en cours…');
+  try{
+    const r = await fetch('/api/v1/connections/vcenter/test-auth', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ host, port, username:user, password:pwd, ssl_verify:false }),
+    });
+    const d = await r.json();
+    if(d.success){
+      const dcs = d.datacenters?.join(', ') || '—';
+      setResult('vc-auth-result', true, `${d.fullName || 'vCenter'} — Datacenters: ${dcs}`);
+      showStep('vc', 3);
+      // Pré-remplir le nom
+      if(host && !document.getElementById('vc-name')?.value)
+        document.getElementById('vc-name').value = 'vCenter — '+host;
+      // Pré-remplir le datacenter si un seul
+      if(d.datacenters?.length === 1)
+        document.getElementById('vc-dc').value = d.datacenters[0];
+      toast('Authentification vCenter réussie !','success');
+    } else {
+      setResult('vc-auth-result', false, d.message || 'Authentification échouée');
+    }
+  } catch(e){ setResult('vc-auth-result', false, 'Erreur réseau'); }
+}
+
+async function saveVC(){
+  const host = document.getElementById('vc-host')?.value.trim();
+  const port = parseInt(document.getElementById('vc-port')?.value || '443');
+  const user = document.getElementById('vc-user')?.value.trim();
+  const pwd  = document.getElementById('vc-pwd')?.value;
+  const name = document.getElementById('vc-name')?.value.trim();
+  const dc   = document.getElementById('vc-dc')?.value.trim();
+  const ssl  = document.getElementById('vc-ssl')?.checked;
+  if(!name){ toast('Donnez un nom à cette connexion','error'); return; }
+  try{
+    const r = await fetch('/api/v1/connections/vcenter', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ name, host, port, username:user, password:pwd,
+                             datacenter:dc, ssl_verify:ssl }),
+    });
+    const d = await r.json();
+    if(!r.ok){ toast(d.error||'Erreur','error'); return; }
+    toast(`vCenter "${name}" enregistré !`,'success');
+    log('infra','vCenter ajouté: '+name+' ('+host+')','INFO');
+    // Reset wizard
+    ['vc-host','vc-user','vc-pwd','vc-name','vc-dc'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    showStep('vc', 1);
+    document.getElementById('vc-ping-result').innerHTML='';
+    document.getElementById('vc-auth-result').innerHTML='';
+    loadConnections();
+    // Mettre à jour les selects vCenter partout
+    populateVCenterSelect();
+    populatePJVCenterSelect();
+  } catch(e){ toast('Erreur réseau','error'); }
+}
+
+// ── OpenStack Wizard ──────────────────────────────────────────
+async function pingOS(){
+  const url = document.getElementById('os-url')?.value.trim();
+  if(!url){ toast("Entrez l'URL Keystone",'error'); return; }
+  setResult('os-ping-result', null, 'Test en cours…');
+  try{
+    const r = await fetch('/api/v1/connections/openstack/ping', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ auth_url: url }),
+    });
+    const d = await r.json();
+    if(d.reachable){
+      setResult('os-ping-result', true, `Keystone joignable — ${d.latency}`);
+      showStep('os', 2);
+      toast('URL Keystone joignable !','success');
+    } else {
+      setResult('os-ping-result', false, d.error || 'URL injoignable');
+    }
+  } catch(e){ setResult('os-ping-result', false, 'Erreur réseau'); }
+}
+
+async function testOSAuth(){
+  const url     = document.getElementById('os-url')?.value.trim();
+  const project = document.getElementById('os-project')?.value.trim();
+  const user    = document.getElementById('os-user')?.value.trim();
+  const pwd     = document.getElementById('os-pwd')?.value;
+  const udomain = document.getElementById('os-udomain')?.value.trim() || 'Default';
+  const region  = document.getElementById('os-region')?.value.trim() || 'RegionOne';
+  const ssl     = document.getElementById('os-ssl')?.checked;
+  if(!project || !user || !pwd){ toast('Renseignez projet, utilisateur et mot de passe','error'); return; }
+  setResult('os-auth-result', null, 'Authentification Keystone en cours…');
+  try{
+    const r = await fetch('/api/v1/connections/openstack/test-auth', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ auth_url:url, project_name:project, username:user,
+                             password:pwd, user_domain_name:udomain,
+                             region_name:region, ssl_verify:ssl }),
+    });
+    const d = await r.json();
+    if(d.success){
+      setResult('os-auth-result', true, d.message);
+      showStep('os', 3);
+      toast('Authentification OpenStack réussie !','success');
+      // Afficher ce qui a été découvert
+      const discov = document.getElementById('os-discovered');
+      const discovBody = document.getElementById('os-discovered-body');
+      if(discov && discovBody){
+        let html = '';
+        if(d.networks?.length) html += `<div>Réseaux: <strong>${d.networks.join(', ')}</strong></div>`;
+        if(d.quota) html += `<div>Instances: ${d.quota.used_instances}/${d.quota.max_instances} · vCPUs: ${d.quota.used_vcpus}/${d.quota.max_vcpus} · RAM: ${Math.round((d.quota.used_ram_mb||0)/1024)}/${Math.round((d.quota.max_ram_mb||0)/1024)} GB</div>`;
+        if(d.flavors?.length) html += `<div>${d.flavors.length} flavors disponibles (${d.flavors.slice(0,3).map(f=>f.name).join(', ')}…)</div>`;
+        discovBody.innerHTML = html;
+        discov.style.display = '';
+      }
+      // Pré-remplir nom
+      if(!document.getElementById('os-name')?.value)
+        document.getElementById('os-name').value = 'OpenStack — '+project;
+    } else {
+      setResult('os-auth-result', false, d.message || 'Échec');
+    }
+  } catch(e){ setResult('os-auth-result', false, 'Erreur réseau'); }
+}
+
+async function saveOS(){
+  const url     = document.getElementById('os-url')?.value.trim();
+  const project = document.getElementById('os-project')?.value.trim();
+  const user    = document.getElementById('os-user')?.value.trim();
+  const pwd     = document.getElementById('os-pwd')?.value;
+  const name    = document.getElementById('os-name')?.value.trim();
+  const ostype  = document.getElementById('os-type')?.value || 'custom';
+  const ssl     = document.getElementById('os-ssl')?.checked;
+  const udomain = document.getElementById('os-udomain')?.value.trim() || 'Default';
+  const region  = document.getElementById('os-region')?.value.trim() || 'RegionOne';
+  const az      = document.getElementById('os-az')?.value.trim() || 'nova';
+  const vol     = document.getElementById('os-vol')?.value.trim() || '';
+  const extnet  = document.getElementById('os-extnet')?.value.trim() || 'public';
+  const epid    = document.getElementById('os-ep-id')?.value.trim() || '0';
+  if(!name){ toast('Donnez un nom à cette connexion','error'); return; }
+  try{
+    const r = await fetch('/api/v1/connections/openstack', {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ name, auth_url:url, project_name:project,
+                             username:user, password:pwd, user_domain_name:udomain,
+                             project_domain_name:'Default', region_name:region,
+                             ssl_verify:ssl, os_type:ostype,
+                             availability_zone:az, volume_type:vol,
+                             external_network:extnet, enterprise_project_id:epid }),
+    });
+    const d = await r.json();
+    if(!r.ok){ toast(d.error||'Erreur','error'); return; }
+    toast(`OpenStack "${name}" enregistré !`,'success');
+    log('infra','OpenStack ajouté: '+name+' ('+url+')','INFO');
+    // Reset wizard
+    ['os-url','os-project','os-user','os-pwd','os-name','os-az','os-vol','os-ep-id'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    document.getElementById('os-udomain').value='Default';
+    document.getElementById('os-region').value='RegionOne';
+    document.getElementById('os-extnet').value='public';
+    showStep('os', 1);
+    document.getElementById('os-ping-result').innerHTML='';
+    document.getElementById('os-auth-result').innerHTML='';
+    document.getElementById('os-discovered').style.display='none';
+    loadConnections();
+  } catch(e){ toast('Erreur réseau','error'); }
+}
+
+// ── Affichage des connexions enregistrées ─────────────────────
+async function loadConnections(){
+  try{
+    const d = await api('/api/v1/connections');
+    renderSavedVCenters(d.vcenters||[]);
+    renderSavedOpenStacks(d.openstacks||[]);
+    // Mettre à jour les sélecteurs de migration
+    allVCenters = (d.vcenters||[]).map(vc=>({id:vc.conn_id, name:vc.name, host:vc.host}));
+    populateVCenterSelect();
+    populatePJVCenterSelect();
+    // Mettre à jour le sélecteur OpenStack dans le form de migration
+    populateOSSelect(d.openstacks||[]);
+  } catch(e){}
+}
+
+function renderSavedVCenters(vcs){
+  const c = document.getElementById('vc-saved-list');
+  if(!c) return;
+  if(!vcs.length){
+    c.innerHTML='<div style="padding:18px;text-align:center;color:var(--tx3);font-size:12px;">Aucun vCenter enregistré</div>';
+    return;
+  }
+  const sc = {connected:'var(--gr)',reachable:'var(--am)',error:'var(--re)',unknown:'var(--tx3)'};
+  c.innerHTML = vcs.map(vc=>`
+    <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${sc[vc.status]||'var(--tx3)'};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${vc.name}</div>
+        <div style="font-size:11px;color:var(--tx2);font-family:monospace;">${vc.host}:${vc.port} · ${vc.datacenter||'—'}</div>
+        <div style="font-size:10px;color:var(--tx3);">${vc.vm_count||0} VMs · ${vc.host_count||0} ESXi · ${vc.username}</div>
+        ${vc.last_error?`<div style="font-size:10px;color:var(--re);">${vc.last_error.slice(0,60)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0;">
+        <button class="btn btn-xs btn-info" onclick="retestVC('${vc.conn_id}')">Re-tester</button>
+        <button class="btn btn-xs btn-or" onclick="browseVC('${vc.conn_id}')">Parcourir</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteVC('${vc.conn_id}','${vc.name}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderSavedOpenStacks(oss){
+  const c = document.getElementById('os-saved-list');
+  if(!c) return;
+  if(!oss.length){
+    c.innerHTML='<div style="padding:18px;text-align:center;color:var(--tx3);font-size:12px;">Aucun OpenStack enregistré</div>';
+    return;
+  }
+  const sc = {connected:'var(--gr)',error:'var(--re)',unknown:'var(--tx3)'};
+  const tl = {custom:'Community',redhat:'Red Hat',huawei:'Huawei'};
+  c.innerHTML = oss.map(os=>`
+    <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${sc[os.status]||'var(--tx3)'};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${os.name}</div>
+        <div style="font-size:11px;color:var(--tx2);font-family:monospace;">${os.auth_url}</div>
+        <div style="font-size:10px;color:var(--tx3);">${tl[os.os_type]||os.os_type} · ${os.project_name} · ${os.region_name}</div>
+        ${os.last_error?`<div style="font-size:10px;color:var(--re);">${os.last_error.slice(0,60)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0;">
+        <button class="btn btn-xs btn-info" onclick="retestOS('${os.conn_id}')">Re-tester</button>
+        <button class="btn btn-xs btn-or" onclick="viewOSResources('${os.conn_id}')">Ressources</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteOS('${os.conn_id}','${os.name}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function retestVC(id){
+  toast('Re-test vCenter…','info');
+  try{const r=await fetch('/api/v1/connections/vcenter/'+id+'/retest',{method:'POST',headers:authHeaders()});const d=await r.json();toast(d.message,'success');loadConnections();}catch(e){}
+}
+async function retestOS(id){
+  toast('Re-test OpenStack…','info');
+  try{const r=await fetch('/api/v1/connections/openstack/'+id+'/retest',{method:'POST',headers:authHeaders()});const d=await r.json();toast(d.message,d.success?'success':'error');loadConnections();}catch(e){}
+}
+async function deleteVC(id,name){
+  if(!confirm('Supprimer le vCenter "'+name+'" ?')) return;
+  try{const r=await fetch('/api/v1/connections/vcenter/'+id,{method:'DELETE',headers:authHeaders()});const d=await r.json();toast(d.message,'info');loadConnections();}catch(e){}
+}
+async function deleteOS(id,name){
+  if(!confirm("Supprimer l'OpenStack \""+name+"\" ?")) return;
+  try{const r=await fetch('/api/v1/connections/openstack/'+id,{method:'DELETE',headers:authHeaders()});const d=await r.json();toast(d.message,'info');loadConnections();}catch(e){}
+}
+function browseVC(id){
+  // Pré-sélectionner ce vCenter et aller sur la page migrate
+  document.getElementById('f-vc').value = id;
+  onVCChange();
+  nav('migrate');
+  setTimeout(()=>loadHostsForVC(), 200);
+}
+async function viewOSResources(id){
+  toast('Chargement ressources…','info');
+  try{const d=await api('/api/v1/connections/openstack/'+id+'/resources');loadOSResources_data(id,d);}catch(e){toast('Erreur','error');}
+}
+function loadOSResources_data(id,d){
+  const c=d.quota||{};
+  const ipct=c.max_instances>0?Math.round(c.used_instances/c.max_instances*100):0;
+  const vpct=c.max_vcpus>0?Math.round(c.used_vcpus/c.max_vcpus*100):0;
+  const rpct=c.max_ram_mb>0?Math.round(c.used_ram_mb/c.max_ram_mb*100):0;
+  const col=p=>p>80?'var(--re)':p>60?'var(--am)':'var(--gr)';
+  let h=`<div class="g3" style="margin-bottom:14px;">
+    <div class="mchip"><div class="mc-lbl">Instances</div><div class="mc-val">${c.used_instances||0}/${c.max_instances||0}</div><div style="height:4px;background:var(--bd);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${ipct}%;background:${col(ipct)};border-radius:2px;"></div></div></div>
+    <div class="mchip"><div class="mc-lbl">vCPUs</div><div class="mc-val">${c.used_vcpus||0}/${c.max_vcpus||0}</div><div style="height:4px;background:var(--bd);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${vpct}%;background:${col(vpct)};border-radius:2px;"></div></div></div>
+    <div class="mchip"><div class="mc-lbl">RAM</div><div class="mc-val">${Math.round((c.used_ram_mb||0)/1024)}/${Math.round((c.max_ram_mb||0)/1024)} GB</div><div style="height:4px;background:var(--bd);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${rpct}%;background:${col(rpct)};border-radius:2px;"></div></div></div>
+  </div>`;
+  if(d.networks?.length) h+=`<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:5px;">RÉSEAUX</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${d.networks.map(n=>`<span style="background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:2px 8px;font-size:11px;">${n}</span>`).join('')}</div></div>`;
+  if(d.flavors?.length) h+=`<div><div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:5px;">FLAVORS (${d.flavors.length})</div><div style="overflow-x:auto;"><table class="tbl" style="font-size:12px;"><thead><tr><th>Nom</th><th>vCPU</th><th>RAM</th></tr></thead><tbody>${d.flavors.slice(0,8).map(f=>`<tr><td style="font-weight:600;">${f.name}</td><td>${f.vcpus}</td><td>${Math.round(f.ram/1024)}GB</td></tr>`).join('')}</tbody></table></div></div>`;
+  document.getElementById('m-act-title').textContent='Ressources — '+(d.name||id);
+  document.getElementById('m-act-body').innerHTML=h;
+  document.getElementById('m-act').classList.add('open');
+}
+
+// Mettre à jour le select OpenStack dans le form de migration depuis les connexions dynamiques
+function populateOSSelect(openstacks){
+  const sel = document.getElementById('f-target');
+  if(!sel) return;
+  if(!openstacks.length) return; // garder les options statiques si pas de dynamique
+  sel.innerHTML = openstacks.map(os=>
+    `<option value="${os.conn_id}">${os.name}</option>`
+  ).join('');
+  updateOSStatusBadge();
+}
+
+
+// ── Wrappers par ID (évite JSON inline dans onclick) ──────────
+function openActionsByID(jobId){
+  const j = allJobs.find(x=>x.job_id===jobId);
+  if(j) openActions(j); else toast('Job introuvable','error');
+}
+function showTimelineByID(jobId){
+  const j = allJobs.find(x=>x.job_id===jobId);
+  if(j) showTimeline(j); else toast('Job introuvable','error');
+}
+
+// ══ INIT ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  // 1. Afficher le contenu immédiatement
+  initCharts();
+  const hash = window.location.hash.replace('#','');
+  if(hash && document.getElementById('page-'+hash)) nav(hash, false);
+  else nav('dashboard', false);
+
+  // 2. Vérifier l'auth en background (sans bloquer l'affichage)
+  initAuth().then(ok => {
+    if(!ok) return; // redirigé vers /login
+    connectWS();
+    loadStats();
+    loadJobs();
+    loadConnections();
+    loadProjects();
+    populatePJVCenterSelect();
+  });
+});
+</script>
+</body>
+</html>

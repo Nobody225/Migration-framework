@@ -1,0 +1,12 @@
+﻿venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+config/users.json
+config/projects.json
+config/connections.json
+config/config.local.yaml
+*.log
+*.jsonl
+migration_workspace/

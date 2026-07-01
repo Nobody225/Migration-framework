@@ -1,0 +1,182 @@
+# ═══════════════════════════════════════════════════════════════════
+# config.local.yaml — Configuration réelle pour les tests
+# Orange Group / Telecom IT
+#
+# INSTRUCTIONS :
+#   1. Copier ce fichier : cp config.yaml config.local.yaml
+#   2. Remplir CHAQUE valeur marquée  ← À REMPLIR
+#   3. Ne jamais committer ce fichier (contient des mots de passe)
+#   4. Lancer : python run_api.py --config config/config.local.yaml
+#
+# POUR TESTER SANS VCENTER/OPENSTACK RÉELS :
+#   → Mettre dry_run: true  (section migration)
+#   → Le dashboard fonctionnera, les migrations seront simulées
+# ═══════════════════════════════════════════════════════════════════
+
+
+# ── 1. VCENTER(S) SOURCE ─────────────────────────────────────────
+# Renseigner UN vCenter minimum pour tester.
+# Si vous n'avez qu'un seul vCenter, supprimez les entrées vcenter-dev et vcenter-dr.
+
+vcenters:
+
+  - id: "vcenter-prod"
+    name: "vCenter Production"          # Nom affiché dans le dashboard
+    host: "192.168.1.10"                # ← IP ou FQDN réel du vCenter
+    port: 443
+    username: "administrator@vsphere.local"   # ← Compte vSphere avec droits lecture
+    password: "VotreMotDePasse123!"     # ← Mot de passe vSphere
+    datacenter: "Datacenter"            # ← Nom exact du Datacenter dans vSphere
+    ssl_verify: false                   # false si certificat auto-signé (courant en lab)
+    metrics_interval_s: 300
+
+  # Décommenter et remplir si vous avez d'autres vCenters :
+  # - id: "vcenter-dev"
+  #   name: "vCenter Dev"
+  #   host: "192.168.2.10"             # ← IP vCenter Dev
+  #   port: 443
+  #   username: "administrator@vsphere.local"
+  #   password: "MotDePasseDev!"
+  #   datacenter: "DC-Dev"
+  #   ssl_verify: false
+  #   metrics_interval_s: 300
+
+
+# ── Fallback single vCenter (obligatoire) ────────────────────────
+# Doit correspondre à votre vCenter principal ci-dessus
+
+vmware:
+  host: "192.168.1.10"                  # ← Même IP que vcenter-prod
+  port: 443
+  username: "administrator@vsphere.local"
+  password: "VotreMotDePasse123!"       # ← Même mot de passe
+  datacenter: "Datacenter"             # ← Même nom de datacenter
+  ssl_verify: false
+  metrics_interval_s: 300
+
+
+# ── 2. OPENSTACK CIBLE(S) ────────────────────────────────────────
+# Renseigner AU MOINS UN target OpenStack.
+# Pour tester avec un seul OpenStack, garder uniquement "custom".
+
+openstack:
+
+  # ── Option A : OpenStack Community / Vanilla (le plus simple) ──
+  custom:
+    auth_url: "http://192.168.10.100:5000/v3"   # ← URL Keystone de votre OpenStack
+    project_name: "migration-tests"              # ← Nom du projet/tenant OpenStack
+    username: "migration-svc"                    # ← Compte de service OpenStack
+    password: "OpenStackPass123!"                # ← Mot de passe OpenStack
+    user_domain_name: "Default"
+    project_domain_name: "Default"
+    region_name: "RegionOne"                     # ← Votre région (openstack region list)
+    ssl_verify: false
+    custom:
+      volume_type: ""                  # Laisser vide = type par défaut
+      availability_zone: "nova"        # ← Votre AZ (openstack availability zone list)
+      external_network: "public"       # ← Réseau externe pour IPs flottantes
+
+  # ── Option B : Red Hat OpenStack Platform (RHOSP) ──────────────
+  # Décommenter si vous avez un RHOSP
+  # redhat:
+  #   auth_url: "https://192.168.10.200:5000/v3"  # ← URL Keystone RHOSP
+  #   project_name: "migration-project"
+  #   username: "migration-svc"
+  #   password: "RHOSPPass123!"
+  #   user_domain_name: "Default"
+  #   project_domain_name: "Default"
+  #   region_name: "RegionOne"
+  #   ssl_verify: true
+  #   redhat:
+  #     availability_zone: "nova"
+  #     volume_type: "ceph"            # ceph ou tripleo_iscsi selon votre storage
+  #     aggregate_name: ""             # Laisser vide si pas d'host aggregate dédié
+
+  # ── Option C : Huawei FusionSphere ─────────────────────────────
+  # huawei:
+  #   auth_url: "https://192.168.10.300:5000/v3"
+  #   project_name: "migration-project"
+  #   username: "migration-svc"
+  #   password: "HuaweiPass123!"
+  #   user_domain_name: "op_svc_domain"
+  #   project_domain_name: "op_svc_domain"
+  #   region_name: "RegionOne"
+  #   ssl_verify: false
+  #   huawei:
+  #     enterprise_project_id: "0"     # ← ID projet ManageOne (0 = projet par défaut)
+  #     volume_type: "SAS"             # SSD | SAS | SATA
+  #     availability_zone: "nova"
+
+
+# ── 3. PARAMÈTRES DE MIGRATION ───────────────────────────────────
+
+migration:
+  # ⚠️  IMPORTANT POUR LES TESTS : mettre true pour simuler sans créer de ressources
+  dry_run: true                        # ← Passer à false quand prêt pour le réel
+
+  workspace_dir: "/tmp/migration_workspace"  # ← Dossier temporaire pour les VMDK
+                                              #   Doit avoir ~100GB libres en prod
+  default_mode: "cold"
+  parallel: false
+  max_parallel_jobs: 2
+  skip_powered_on: true               # Refuse de migrer une VM allumée (sécurité)
+  upload_timeout_s: 3600
+  boot_timeout_s: 600
+
+
+# ── 4. CONVERSION DISQUES ─────────────────────────────────────────
+conversion:
+  qemu_img_path: "/usr/bin/qemu-img"  # ← Vérifier : which qemu-img
+  target_format: "qcow2"
+  compression: true
+  verify_checksum: true
+
+
+# ── 5. ÉVALUATION DES PERFORMANCES ──────────────────────────────
+evaluation:
+  enabled: true
+  ssh_user: "root"                    # ← Utilisateur SSH sur les VMs migrées
+  ssh_key_path: "~/.ssh/id_rsa"       # ← Clé SSH pour se connecter aux VMs
+                                      #   Générer si besoin : ssh-keygen -t rsa
+  wait_after_boot_s: 60
+
+  sysbench:
+    threads: 4
+    cpu_max_prime: 10000
+    memory_total_gb: 10
+
+  fio:
+    runtime_s: 30
+    block_size_kb: 4
+    jobs: 4
+    iodepth: 16
+
+  iperf3:
+    server: ""                        # ← IP d'un serveur iperf3 accessible
+                                      #   Si vide, les tests réseau sont ignorés
+                                      #   Lancer sur un serveur : iperf3 -s
+    duration_s: 10
+    streams: 4
+
+  thresholds:
+    cpu_pct: 15
+    memory_pct: 10
+    disk_iops_pct: 20
+    network_bw_pct: 15
+
+
+# ── 6. API / DASHBOARD ───────────────────────────────────────────
+api:
+  host: "0.0.0.0"
+  port: 8080
+  debug: true                         # ← Passer à false en production
+  secret_key: "changez-cette-cle-secrete-en-prod-32chars"
+
+
+# ── 7. LOGS ──────────────────────────────────────────────────────
+logging:
+  level: "DEBUG"                      # DEBUG pour les tests, INFO en prod
+  file: "/tmp/migration.log"          # ← Chemin accessible en écriture
+  max_bytes: 104857600
+  backup_count: 5
+  audit_file: "/tmp/migration-audit.jsonl"
