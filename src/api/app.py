@@ -285,11 +285,14 @@ def _register_routes(app: Flask, socketio: SocketIO):
         Body (JSON):
         {
             "vms": ["vm-name-1", "vm-name-2"],
-            "target": "redhat" | "huawei" | "custom",
+            "vcenter_id": "<conn_id>",       // UUID depuis ConnectionStore (dashboard)
+            "openstack_id": "<conn_id>",     // UUID depuis ConnectionStore (dashboard)
+            "target": "custom",              // Fallback si openstack_id absent
             "mode": "cold" | "warm",
             "operator": "john.doe",
             "dry_run": false,
-            "skip_evaluation": false
+            "skip_evaluation": false,
+            "parallel": false
         }
         """
         orch = get_orch()
@@ -299,25 +302,45 @@ def _register_routes(app: Flask, socketio: SocketIO):
         if not vm_names:
             return jsonify({"error": "'vms' list is required"}), 400
 
-        target_str = data.get("target", "custom")
+        # ── Résolution OpenStack ─────────────────────────────────
+        openstack_id = data.get("openstack_id")  # conn_id depuis ConnectionStore
+        target_str   = data.get("target", "custom")
+
+        # Si openstack_id fourni, déterminer le type depuis ConnectionStore
+        if openstack_id:
+            try:
+                from src.api.connection_store import get_connection_store
+                store = get_connection_store()
+                os_conn = store.get_openstack(openstack_id)
+                if os_conn:
+                    target_str = os_conn.os_type  # "custom", "redhat", "huawei"
+            except Exception:
+                pass
+
         try:
             target = OpenStackTarget(target_str.lower())
         except ValueError:
-            return jsonify({"error": f"Invalid target: {target_str}"}), 400
+            target = OpenStackTarget.CUSTOM
 
+        # ── Résolution vCenter ───────────────────────────────────
+        vcenter_id = data.get("vcenter_id")  # conn_id depuis ConnectionStore
+
+        # ── Mode de migration ────────────────────────────────────
         mode_str = data.get("mode", "cold")
         try:
             mode = MigrationMode(mode_str.lower())
         except ValueError:
-            return jsonify({"error": f"Invalid mode: {mode_str}"}), 400
+            return jsonify({"error": f"Mode invalide: {mode_str}"}), 400
 
-        operator       = data.get("operator", "api-user")
-        skip_eval      = data.get("skip_evaluation", False)
-        parallel       = data.get("parallel", False)
+        operator  = data.get("operator", "api-user")
+        skip_eval = data.get("skip_evaluation", False)
+        parallel  = data.get("parallel", False)
+        dry_run   = data.get("dry_run", None)
 
-        # Override dry_run from request if specified
-        if data.get("dry_run"):
-            app.config["FRAMEWORK_CONFIG"]["migration"]["dry_run"] = True
+        # Override dry_run si spécifié dans la requête
+        if dry_run is not None:
+            app.config["FRAMEWORK_CONFIG"]["migration"]["dry_run"] = bool(dry_run)
+            orch.dry_run = bool(dry_run)
 
         requests_list = [
             {
@@ -326,11 +349,13 @@ def _register_routes(app: Flask, socketio: SocketIO):
                 "mode":            mode,
                 "operator":        operator,
                 "skip_evaluation": skip_eval,
+                "vcenter_id":      vcenter_id,
+                "openstack_id":    openstack_id,
             }
             for vm_name in vm_names
         ]
 
-        # Run in background thread so API returns immediately
+        # Lancer en background
         import threading
         def run_migrations():
             orch.migrate_batch(requests_list, parallel=parallel)
@@ -338,18 +363,17 @@ def _register_routes(app: Flask, socketio: SocketIO):
         thread = threading.Thread(target=run_migrations, daemon=True)
         thread.start()
 
-        # Return job IDs immediately (jobs are already registered)
-        # We need to get the jobs that were just created
-        # Since they're created synchronously before the pipeline starts,
-        # we return the pending job summaries
         pending_jobs = [
             j for j in orch.list_jobs(status=MigrationStatus.PENDING)
             if j.vm_name in vm_names
         ]
 
         return jsonify({
-            "message":   f"Migration started for {len(vm_names)} VM(s)",
-            "jobs":      [_job_summary(j) for j in pending_jobs],
+            "message":      f"Migration démarrée pour {len(vm_names)} VM(s)",
+            "jobs":         [_job_summary(j) for j in pending_jobs],
+            "vcenter_id":   vcenter_id,
+            "openstack_id": openstack_id,
+            "dry_run":      orch.dry_run,
         }), 202
 
     # ── Stats ────────────────────────────────────────────────────
@@ -585,18 +609,44 @@ def register_vcenter_openstack_routes(app):
 
     @app.route("/api/v1/vcenters")
     def list_vcenters():
-        """List all configured vCenter connections."""
+        """List all vCenter connections (config.yaml + ConnectionStore)."""
         config = app.config["FRAMEWORK_CONFIG"]
-        vcenters = config.get("vcenters", [])
-        # Fallback: wrap single vmware config as a list
-        if not vcenters and config.get("vmware"):
-            vm = config["vmware"]
-            vcenters = [{
-                "id":   "default",
-                "name": vm.get("host", "vCenter Default"),
-                "host": vm.get("host", ""),
-                "datacenter": vm.get("datacenter", ""),
-            }]
+
+        # 1. Connexions dynamiques depuis ConnectionStore (dashboard)
+        vcenters = []
+        try:
+            from src.api.connection_store import get_connection_store
+            store = get_connection_store()
+            for conn in store.list_vcenters():
+                vcenters.append({
+                    "id":         conn.conn_id,
+                    "name":       conn.name,
+                    "host":       conn.host,
+                    "port":       conn.port,
+                    "datacenter": conn.datacenter,
+                    "status":     conn.status,
+                    "vm_count":   conn.vm_count,
+                    "username":   conn.username,
+                })
+        except Exception:
+            pass
+
+        # 2. Connexions statiques depuis config.yaml (fallback si aucune dynamique)
+        if not vcenters:
+            static_vcs = config.get("vcenters", [])
+            if not static_vcs and config.get("vmware", {}).get("host"):
+                vm = config["vmware"]
+                static_vcs = [{
+                    "id":         "default",
+                    "name":       f"vCenter — {vm.get('host', '')}",
+                    "host":       vm.get("host", ""),
+                    "port":       vm.get("port", 443),
+                    "datacenter": vm.get("datacenter", ""),
+                    "status":     "unknown",
+                    "username":   vm.get("username", ""),
+                }]
+            vcenters = static_vcs
+
         return jsonify({"count": len(vcenters), "vcenters": vcenters})
 
     @app.route("/api/v1/vcenters/<vcenter_id>/vms")

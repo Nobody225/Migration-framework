@@ -33,5 +33,30 @@ def load_config(path: str) -> Dict[str, Any]:
         return value
 
     content = re.sub(r"\$\{([^}]+)\}", replace_env_var, content)
-    config  = yaml.safe_load(content)
-    return config or {}
+    config  = yaml.safe_load(content) or {}
+
+    # ── Résolution cross-platform du workspace_dir ────────────────
+    migration = config.setdefault("migration", {})
+    workspace = migration.get("workspace_dir", "")
+    if not workspace:
+        import platform
+        import tempfile
+        if platform.system() == "Windows":
+            workspace = os.path.join(os.environ.get("TEMP", tempfile.gettempdir()), "migration_workspace")
+        else:
+            workspace = "/tmp/migration_workspace"
+        migration["workspace_dir"] = workspace
+
+    os.makedirs(workspace, exist_ok=True)
+
+    # ── Résolution cross-platform du qemu_img_path ────────────────
+    import shutil
+    conversion = config.setdefault("conversion", {})
+    if not conversion.get("qemu_img_path"):
+        qemu = shutil.which("qemu-img")
+        if qemu:
+            conversion["qemu_img_path"] = qemu
+        else:
+            conversion["qemu_img_path"] = "/usr/bin/qemu-img"
+
+    return config

@@ -454,7 +454,7 @@ class WindowsVirtIOInjector:
         raise RuntimeError("Impossible de trouver System32 dans l'image Windows")
 
     def _patch_registry(self, g, system32: str):
-        """
+        r"""
         Édite les ruches registre offline pour enregistrer les pilotes VirtIO.
         Modifie SYSTEM\CurrentControlSet\Services et CriticalDeviceDatabase.
         """

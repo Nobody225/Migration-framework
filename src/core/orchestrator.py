@@ -65,19 +65,21 @@ class MigrationOrchestrator:
         evaluator,
         optimizer,
         adapter_configs: Dict[str, Any],
-        workspace_dir: str = "/opt/migration/workspace",
-        dry_run: bool = False,
+        framework_config: Dict[str, Any] = None,
+        workspace_dir: str = "/tmp/migration_workspace",
+        dry_run: bool = True,
         max_workers: int = 3,
     ):
-        self.extractor       = extractor
-        self.converter       = converter
-        self.deployer        = deployer
-        self.evaluator       = evaluator
-        self.optimizer       = optimizer
-        self.adapter_configs = adapter_configs   # keyed by OpenStackTarget.value
-        self.workspace_dir   = workspace_dir
-        self.dry_run         = dry_run
-        self.max_workers     = max_workers
+        self.extractor        = extractor
+        self.converter        = converter
+        self.deployer         = deployer
+        self.evaluator        = evaluator
+        self.optimizer        = optimizer
+        self.adapter_configs  = adapter_configs   # keyed by conn_id or OpenStackTarget.value
+        self.framework_config = framework_config or {}
+        self.workspace_dir    = workspace_dir
+        self.dry_run          = dry_run
+        self.max_workers      = max_workers
 
         self._jobs: Dict[str, MigrationJob] = {}
         self._lock = threading.Lock()
@@ -103,6 +105,8 @@ class MigrationOrchestrator:
         mode: MigrationMode = MigrationMode.COLD,
         operator: str = "system",
         skip_evaluation: bool = False,
+        vcenter_id: str = None,
+        openstack_id: str = None,
     ) -> MigrationJob:
         """
         Run the full migration pipeline for one VM.
@@ -113,7 +117,12 @@ class MigrationOrchestrator:
         job = self._create_job(vm_name, target, mode, operator)
 
         try:
-            adapter = self._get_adapter(target)
+            # Résoudre les connexions dynamiques si des conn_ids sont fournis
+            adapter = self._get_adapter(target, openstack_id)
+
+            # Configurer l'extractor avec le bon vCenter si spécifié
+            if vcenter_id:
+                self._configure_extractor(vcenter_id)
 
             # ── Phase 1 ── Extract ────────────────────────────────
             self._transition(job, MigrationStatus.EXTRACTING)
@@ -387,16 +396,61 @@ class MigrationOrchestrator:
     # INTERNAL HELPERS
     # ════════════════════════════════════════════════════════════
 
-    def _get_adapter(self, target: OpenStackTarget) -> BaseOpenStackAdapter:
-        """Instantiate a fresh adapter for the given target."""
+    def _get_adapter(self, target: OpenStackTarget, openstack_id: str = None) -> BaseOpenStackAdapter:
+        """
+        Instantiate a fresh adapter for the given target.
+        
+        Priorité :
+        1. openstack_id (conn_id depuis ConnectionStore via dashboard)
+        2. target.value depuis adapter_configs (config.yaml ou ConnectionStore pré-chargé)
+        """
         from src.adapters.huawei.adapter import AdapterFactory
+
+        # Priorité 1 : conn_id explicite depuis le dashboard
+        if openstack_id:
+            config = self.adapter_configs.get(openstack_id)
+            if not config:
+                # Résolution en temps réel depuis ConnectionStore
+                try:
+                    from src.utils.framework_factory import resolve_openstack_config
+                    config = resolve_openstack_config(openstack_id, self.framework_config)
+                except Exception:
+                    pass
+            if config:
+                # Déterminer le type d'adapter
+                os_type = config.get("type", "custom")
+                try:
+                    tgt = OpenStackTarget(os_type)
+                except ValueError:
+                    tgt = OpenStackTarget.CUSTOM
+                return AdapterFactory.create(tgt, config)
+
+        # Priorité 2 : enum depuis adapter_configs
         config = self.adapter_configs.get(target.value)
         if not config:
             raise ValueError(
-                f"No OpenStack config for target '{target.value}'. "
-                f"Check config.yaml [openstack] section."
+                f"Aucune config OpenStack pour '{target.value}'. "
+                f"Ajoutez un OpenStack depuis Infrastructure → dashboard."
             )
         return AdapterFactory.create(target, config)
+
+    def _configure_extractor(self, vcenter_id: str) -> None:
+        """Reconfigure l'extractor avec le bon vCenter depuis ConnectionStore."""
+        try:
+            from src.utils.framework_factory import resolve_vcenter_config
+            vc_config = resolve_vcenter_config(vcenter_id, self.framework_config)
+            if vc_config:
+                from src.extractor.vmware_extractor import VMwareExtractor
+                self.extractor = VMwareExtractor(vc_config)
+                import logging
+                logging.getLogger("migration.orchestrator").info(
+                    f"Extractor reconfiguré pour vCenter: {vc_config.get('host', vcenter_id)}"
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger("migration.orchestrator").warning(
+                f"Impossible de reconfigurer l'extractor pour {vcenter_id}: {e}"
+            )
 
     def _create_job(
         self,

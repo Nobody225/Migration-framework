@@ -1,23 +1,7 @@
-# config.yaml — Orange Cloud Migration Platform
-# Configuration minimale pour démarrer
-
-vcenters: []
-
-vmware:
-  host: ""
-  port: 443
-  username: ""
-  password: ""
-  datacenter: ""
-  ssl_verify: false
-  metrics_interval_s: 300
-
-openstack: {}
-
 migration:
-  workspace_dir: "/tmp/migration_workspace"
-  dry_run: true
-  default_mode: "cold"
+  dry_run: false
+  workspace_dir: ""
+  default_mode: cold
   parallel: false
   max_parallel_jobs: 3
   skip_powered_on: true
@@ -25,15 +9,16 @@ migration:
   boot_timeout_s: 600
 
 conversion:
-  qemu_img_path: "/usr/bin/qemu-img"
-  target_format: "qcow2"
+  qemu_img_path: ""
+  target_format: qcow2
   compression: true
   verify_checksum: true
+  virtio_iso_path: ""
 
 evaluation:
-  enabled: false
-  ssh_user: "root"
-  ssh_key_path: "~/.ssh/id_rsa"
+  enabled: true
+  ssh_user: root
+  ssh_key_path: ~/.ssh/id_rsa
   wait_after_boot_s: 60
   sysbench:
     threads: 4
@@ -55,14 +40,24 @@ evaluation:
     network_bw_pct: 15
 
 api:
-  host: "0.0.0.0"
+  host: 0.0.0.0
   port: 8080
   debug: false
-  secret_key: "orange-migration-secret-key-2025"
+  secret_key: orange-migration-secret-key-change-in-prod
 
 logging:
-  level: "INFO"
-  file: "/tmp/migration.log"
+  level: INFO
+  file: ""
   max_bytes: 104857600
   backup_count: 5
-  audit_file: "/tmp/migration-audit.jsonl"
+  audit_file: ""
+
+vmware:
+  host: ""
+  port: 443
+  username: ""
+  password: ""
+  datacenter: ""
+  ssl_verify: false
+
+openstack: {}

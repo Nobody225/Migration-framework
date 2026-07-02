@@ -16,7 +16,7 @@ from src.core.models import (
     NetworkAdapterType, VMwarePerformanceMetrics,
     LogLevel,
 )
-from src.converter.vm_converter import VMConverter
+from src.converter.converter import VMConverter
 
 
 # ════════════════════════════════════════════════════════════════
