@@ -228,15 +228,23 @@ class VMwareExtractor:
             logger.warning(f"Host MOR '{host_mor_id}' not found")
             return []
 
+        from pyVmomi import vim
+        # Utiliser rootFolder pour éviter les problèmes de résolution
+        vm_container = self._content.viewManager.CreateContainerView(
+            self._content.rootFolder, [vim.VirtualMachine], True
+        )
         vms = []
-        for vm_mo in (target_host.vm or []):
+        target_host_id = str(target_host._moId)
+        for vm_mo in vm_container.view:
             try:
-                vm = self._extract_vm(vm_mo)
-                if vm:
-                    vms.append(vm)
+                # Filtrer par host
+                if vm_mo.runtime and vm_mo.runtime.host and str(vm_mo.runtime.host).split(':')[-1].strip("'") == target_host_id:
+                    vm = self._extract_vm(vm_mo)
+                    if vm:
+                        vms.append(vm)
             except Exception as exc:
                 logger.warning(f"Skipped VM on host: {exc}")
-
+        vm_container.Destroy()
         logger.info(f"Found {len(vms)} VMs on host {host_mor_id}")
         return vms
 
@@ -393,7 +401,7 @@ class VMwareExtractor:
             guest_full_name=cfg.guestFullName or "",
             hostname=(guest.hostName or "") if guest else "",
             vmware_tools_status=(
-                summary.guest.toolsStatus.name
+                str(summary.guest.toolsStatus)
                 if summary.guest and summary.guest.toolsStatus else ""
             ),
             power_state=_POWER_STATE_MAP.get(
@@ -410,9 +418,17 @@ class VMwareExtractor:
             parent = runtime.host.parent
             if isinstance(parent, vim.ClusterComputeResource):
                 vm.cluster = parent.name
-        dc = self._find_datacenter(mo)
-        if dc:
-            vm.datacenter = dc.name
+        # Trouver le datacenter via l arbre des parents
+        try:
+            _parent = getattr(mo, "parent", None)
+            while _parent:
+                from pyVmomi import vim as _vim
+                if isinstance(_parent, _vim.Datacenter):
+                    vm.datacenter = _parent.name
+                    break
+                _parent = getattr(_parent, "parent", None)
+        except Exception:
+            vm.datacenter = self.datacenter or ""
 
         # Datastores
         if cfg.datastoreUrl:
@@ -628,14 +644,6 @@ class VMwareExtractor:
         dc = next((d for d in view.view if d.name == name), None)
         view.Destroy()
         return dc
-
-    def _find_datacenter(self, mo: Any) -> Optional[Any]:
-        parent = getattr(mo, "parent", None)
-        while parent:
-            if isinstance(parent, vim.Datacenter):
-                return parent
-            parent = getattr(parent, "parent", None)
-        return None
 
     def _find_mo_by_id(self, mor_id: str) -> Optional[Any]:
         view = self._container_view(self.datacenter)

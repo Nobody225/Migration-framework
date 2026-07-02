@@ -78,6 +78,7 @@ class VCenterConnection:
         added_by: str = "system",
         added_at: Optional[str] = None,
         _password_enc: str = "",
+        **kwargs,
     ):
         self.conn_id       = conn_id or str(uuid.uuid4())
         self.name          = name.strip()
@@ -163,6 +164,7 @@ class OpenStackConnection:
         added_by: str = "system",
         added_at: Optional[str] = None,
         _password_enc: str = "",
+        **kwargs,
     ):
         self.conn_id               = conn_id or str(uuid.uuid4())
         self.name                  = name.strip()
@@ -283,11 +285,11 @@ def test_vcenter_auth(host: str, port: int, username: str, password: str,
     Returns (success, message, info_dict).
     """
     try:
-        from pyVim.connect import SmartConnectNoSSL, SmartConnect, Disconnect
+        from pyVim.connect import SmartConnect, Disconnect
         if ssl_verify:
             si = SmartConnect(host=host, port=port, user=username, pwd=password)
         else:
-            si = SmartConnectNoSSL(host=host, port=port, user=username, pwd=password)
+            import ssl; context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT); context.check_hostname = False; context.verify_mode = ssl.CERT_NONE; si = SmartConnect(host=host, port=port, user=username, pwd=password, sslContext=context)
 
         content = si.RetrieveContent()
 

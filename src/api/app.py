@@ -37,6 +37,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.core.models import MigrationMode, MigrationStatus, OpenStackTarget
 from src.utils.config_loader import load_config
 from src.utils.framework_factory import build_framework
+from src.api.connection_routes import register_connection_routes
+from src.api.auth_routes import auth_bp
+from src.api.project_routes import register_project_routes
 
 logger = logging.getLogger("migration.api")
 
@@ -89,6 +92,7 @@ def create_app(config_path: str = "config/config.yaml") -> tuple[Flask, SocketIO
     _register_routes(app, socketio)
 
     app.register_blueprint(auth_bp)
+    register_connection_routes(app)
     register_project_routes(app, get_orchestrator_fn=lambda: app.config["ORCHESTRATOR"])
     register_vcenter_openstack_routes(app)
     return app, socketio
@@ -606,48 +610,6 @@ if __name__ == "__main__":
 
 def register_vcenter_openstack_routes(app):
     """Register multi-vCenter and OpenStack health check routes."""
-
-    @app.route("/api/v1/vcenters")
-    def list_vcenters():
-        """List all vCenter connections (config.yaml + ConnectionStore)."""
-        config = app.config["FRAMEWORK_CONFIG"]
-
-        # 1. Connexions dynamiques depuis ConnectionStore (dashboard)
-        vcenters = []
-        try:
-            from src.api.connection_store import get_connection_store
-            store = get_connection_store()
-            for conn in store.list_vcenters():
-                vcenters.append({
-                    "id":         conn.conn_id,
-                    "name":       conn.name,
-                    "host":       conn.host,
-                    "port":       conn.port,
-                    "datacenter": conn.datacenter,
-                    "status":     conn.status,
-                    "vm_count":   conn.vm_count,
-                    "username":   conn.username,
-                })
-        except Exception:
-            pass
-
-        # 2. Connexions statiques depuis config.yaml (fallback si aucune dynamique)
-        if not vcenters:
-            static_vcs = config.get("vcenters", [])
-            if not static_vcs and config.get("vmware", {}).get("host"):
-                vm = config["vmware"]
-                static_vcs = [{
-                    "id":         "default",
-                    "name":       f"vCenter — {vm.get('host', '')}",
-                    "host":       vm.get("host", ""),
-                    "port":       vm.get("port", 443),
-                    "datacenter": vm.get("datacenter", ""),
-                    "status":     "unknown",
-                    "username":   vm.get("username", ""),
-                }]
-            vcenters = static_vcs
-
-        return jsonify({"count": len(vcenters), "vcenters": vcenters})
 
     @app.route("/api/v1/vcenters/<vcenter_id>/vms")
     def list_vms_from_vcenter(vcenter_id: str):
