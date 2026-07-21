@@ -1440,17 +1440,17 @@ async function showReport(jid){
 }
 
 async function showTimeline(j){
-  const phases=[{n:'Extract',s:['extracting']},{n:'Convert',s:['converting']},{n:'Deploy',s:['deploying']},{n:'Evaluate',s:['evaluating']},{n:'Optimize',s:['optimizing']}];
+  const phases=[{n:'Extract',s:'extracting'},{n:'Convert',s:'converting'},{n:'Deploy',s:'deploying'},{n:'Evaluate',s:'evaluating'},{n:'Optimize',s:'optimizing'}];
   const order=['extracting','converting','deploying','evaluating','optimizing','completed'];
   let tl='<div class="timeline">';
   phases.forEach((p,i)=>{
-    const ci=order.indexOf(j.status), pi=order.indexOf(p.s[0]);
+    const ci=order.indexOf(j.status), pi=order.indexOf(p.s);
     let cls=j.status==='completed'?'done':j.status==='failed'?(pi<=ci?'err':''):(pi<ci?'done':pi===ci?'active':'');
     const ic=cls==='done'?'✓':cls==='active'?'●':cls==='err'?'✗':(i+1).toString();
     tl+=`<div class="tl-step ${cls}"><div class="tl-dot">${ic}</div><div class="tl-lbl">${p.n}</div></div>`;
   });
   tl+='</div>';
-  const sum=`<div style="background:var(--bg);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+  const sum=`<div style="background:var(--bg);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
     <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">VM</div><div style="font-family:monospace;font-weight:700;font-size:12px;">${j.vm_name}</div></div>
     <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">PLATEFORME</div>${tpill(j.target)}</div>
     <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">DURÉE TOTALE</div><div style="font-size:16px;font-weight:800;color:var(--or);">${j.duration_s?fmtDur(j.duration_s):'En cours…'}</div></div>
@@ -1458,9 +1458,44 @@ async function showTimeline(j){
     <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">TERMINÉ</div><div style="font-size:11px;">${j.completed_at?new Date(j.completed_at).toLocaleString('fr-FR'):'—'}</div></div>
     <div><div style="font-size:10px;color:var(--tx2);font-weight:600;">INSTANCE</div><div class="mono" style="font-size:10px;">${(j.instance_id||'—').slice(0,18)}</div></div>
   </div>`;
+
+  // Charger les logs détaillés depuis le backend
+  let logsHtml = '<div style="font-size:11px;color:var(--tx2);padding:8px;">Chargement des logs…</div>';
   document.getElementById('m-tl-title').textContent='Timeline — '+j.vm_name;
-  document.getElementById('m-tl-body').innerHTML=tl+sum;
+  document.getElementById('m-tl-body').innerHTML=tl+sum+logsHtml;
   document.getElementById('m-tl').classList.add('open');
+
+  try {
+    const logsData = await api('/api/v1/jobs/'+j.job_id+'/logs');
+    const entries = logsData.logs || logsData.entries || [];
+    const lvlColor = {INFO:'var(--tx1)',WARNING:'var(--am)',ERROR:'var(--re)',DEBUG:'var(--tx3)'};
+    const lvlIcon  = {INFO:'ℹ',WARNING:'⚠',ERROR:'✗',DEBUG:'·'};
+    logsHtml = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;color:var(--tx1);">
+      📋 Logs détaillés (${entries.length} entrées)
+    </div>
+    <div style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;">`;
+    if(entries.length===0){
+      logsHtml += '<div style="color:var(--tx3);">Aucun log disponible</div>';
+    } else {
+      entries.forEach(e=>{
+        const col = lvlColor[e.level]||'var(--tx1)';
+        const ico = lvlIcon[e.level]||'·';
+        const ts  = e.timestamp ? new Date(e.timestamp).toLocaleTimeString('fr-FR') : '';
+        const phase = e.module ? `<span style="color:var(--or);font-weight:600;">[${e.module}]</span> ` : '';
+        logsHtml += `<div style="padding:2px 0;border-bottom:1px solid var(--bd);color:${col};">
+          <span style="color:var(--tx3);margin-right:6px;">${ts}</span>
+          <span style="margin-right:4px;">${ico}</span>
+          ${phase}<span>${e.event||''}</span>
+          ${e.detail ? `<div style="color:var(--tx3);padding-left:20px;font-size:10px;">${e.detail}</div>` : ''}
+        </div>`;
+      });
+    }
+    logsHtml += '</div>';
+    document.getElementById('m-tl-body').innerHTML = tl+sum+logsHtml;
+  } catch(e) {
+    logsHtml = '<div style="color:var(--re);padding:8px;">Erreur lors du chargement des logs</div>';
+    document.getElementById('m-tl-body').innerHTML = tl+sum+logsHtml;
+  }
 }
 
 async function openActions(j){

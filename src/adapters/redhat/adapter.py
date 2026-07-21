@@ -160,7 +160,7 @@ class RedHatAdapter(BaseOpenStackAdapter):
             vol_kwargs["volume_type"] = vtype
         vol = self._conn.block_storage.create_volume(**vol_kwargs)
         self._conn.block_storage.wait_for_status(
-            vol, status="available", failures=["error"], interval=10, wait=600
+            vol, status="available", failures=["error"], interval=10, wait=3600
         )
         logger.info(f"[RHOSP] Volume ready: {vol.id}")
         if bootable:
@@ -256,7 +256,15 @@ class RedHatAdapter(BaseOpenStackAdapter):
         vm   = conversion.source_vm
         name = vm.name
 
-        bdm      = self._build_block_device_mapping(boot_volume_id, extra_volume_ids)
+        # Boot from Volume (prod) ou Boot from Image (test)
+        if boot_volume_id:
+            bdm = self._build_block_device_mapping(boot_volume_id, extra_volume_ids)
+        else:
+            # Boot from Image directement
+            glance_id = getattr(conversion, "glance_image_id", None)
+            bdm = [{"uuid": glance_id, "source_type": "image",
+                    "destination_type": "local", "boot_index": 0,
+                    "delete_on_termination": True}] if glance_id else []
         networks = [{"port": pid} for pid in port_ids if pid]
         az       = self._rh_config.get("availability_zone", "nova")
 
@@ -272,7 +280,7 @@ class RedHatAdapter(BaseOpenStackAdapter):
             "name":                    name,
             "flavor_id":               flavor_id,
             "networks":                networks,
-            "block_device_mapping_v2": bdm,
+            # Boot from Volume (prod) ou Boot from Image (test)
             "availability_zone":       az,
             # user_data omis si None
             "metadata": {

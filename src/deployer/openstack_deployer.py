@@ -35,6 +35,7 @@ class OpenStackDeployer:
     """Deploys a converted VM onto OpenStack via the provided adapter."""
 
     def __init__(self, config: Dict):
+        self._config           = config
         self._boot_timeout_s   = config.get("boot_timeout_s", 600)
         self._upload_timeout_s = config.get("upload_timeout_s", 3600)
 
@@ -108,30 +109,16 @@ class OpenStackDeployer:
                 "No converted disks in ConversionResult",
                 adapter.target, "deploy",
             )
-
-        boot_disk = conversion.converted_disks[0]
+        boot_disk  = conversion.converted_disks[0]
         if not os.path.exists(boot_disk.qcow2_path):
             raise OpenStackAdapterError(
                 f"QCOW2 file missing: {boot_disk.qcow2_path}",
                 adapter.target, "deploy",
             )
-
         ts         = datetime.now().strftime("%Y%m%d%H%M%S")
         image_name = f"migration-{vm_name}-boot-{ts}"
-        # Taille dynamique : virtual_size Glance > actual > original > fallback
-        try:
-            img_info = adapter._conn.image.get_image(image_id)
-            vs = img_info.get("virtual_size") or img_info.get("size") or 0
-            virtual_gb = max(1, int(vs / (1024**3))) if vs else 0
-        except Exception:
-            virtual_gb = 0
-        actual_gb = int(boot_disk.actual_size_gb or 0)
-        original_gb = int(boot_disk.original_size_gb or 0)
-        # Ajouter 20% de marge pour tenir compte de la taille virtuelle
-        size_gb = max(virtual_gb, actual_gb, original_gb, 10)
-        if size_gb < 16 and virtual_gb == 0:
-            size_gb = 20  # fallback securise
 
+        # 1. Upload image vers Glance
         logger.info(f"[Deployer] Uploading boot image '{image_name}'")
         image_id = adapter.upload_image(
             qcow2_path=boot_disk.qcow2_path,
@@ -140,6 +127,36 @@ class OpenStackDeployer:
             container_format="bare",
         )
 
+        # Stocker image_id dans conversion pour boot_from_image si nécessaire
+        conversion.glance_image_id = image_id
+
+        # Mode Boot from Image (test) ou Boot from Volume (prod)
+        boot_from_image = self._config.get("boot_from_image", False)
+        if boot_from_image:
+            logger.info(f"[Deployer] Mode Boot-from-Image (test) — pas de volume Cinder")
+            # Retourner un volume fictif pour compatibilité
+            from src.core.models import OpenStackVolume
+            return OpenStackVolume(
+                volume_id=None,
+                name=f"migration-{vm_name}-boot",
+                size_gb=0,
+                volume_type=None,
+                status="bfi",
+                bootable=True,
+            )
+
+        # 2. Taille dynamique depuis Glance virtual_size
+        try:
+            img_info = adapter._conn.image.get_image(image_id)
+            vs = img_info.get("virtual_size") or img_info.get("size") or 0
+            virtual_gb = max(1, int(vs / (1024**3))) if vs else 0
+        except Exception:
+            virtual_gb = 0
+        actual_gb   = int(boot_disk.actual_size_gb or 0)
+        original_gb = int(boot_disk.original_size_gb or 0)
+        size_gb     = max(virtual_gb, actual_gb, original_gb, 20)
+
+        # 3. Créer le volume Cinder depuis l'image
         logger.info(f"[Deployer] Creating boot volume ({size_gb}GB) from {image_id}")
         return adapter.create_volume_from_image(
             image_id=image_id,
