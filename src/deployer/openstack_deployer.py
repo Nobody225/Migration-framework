@@ -154,7 +154,9 @@ class OpenStackDeployer:
             virtual_gb = 0
         actual_gb   = int(boot_disk.actual_size_gb or 0)
         original_gb = int(boot_disk.original_size_gb or 0)
-        size_gb     = max(virtual_gb, actual_gb, original_gb, 20)
+        # Utiliser la taille virtuelle exacte de l image
+        # En thin provisioning LVM, le volume peut depasser VFree
+        size_gb = virtual_gb if virtual_gb > 0 else max(actual_gb, original_gb, 10)
 
         # 3. Créer le volume Cinder depuis l'image
         logger.info(f"[Deployer] Creating boot volume ({size_gb}GB) from {image_id}")

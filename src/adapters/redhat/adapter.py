@@ -280,6 +280,9 @@ class RedHatAdapter(BaseOpenStackAdapter):
             "name":                    name,
             "flavor_id":               flavor_id,
             "networks":                networks,
+            "block_device_mapping_v2": bdm,
+            "image_id": "",
+            "image_id": "",
             # Boot from Volume (prod) ou Boot from Image (test)
             "availability_zone":       az,
             # user_data omis si None
