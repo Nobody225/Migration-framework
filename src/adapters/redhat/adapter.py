@@ -97,12 +97,25 @@ class RedHatAdapter(BaseOpenStackAdapter):
             disk_format=disk_format,
             container_format=container_format,
             visibility="private",
-            **props,
+            properties=props,
         )
         with open(qcow2_path, "rb") as fh:
-            self._conn.image.upload_image(image.id, data=fh)
-
-        self._conn.image.wait_for_image(image.id, status="active")
+            import requests as _req, urllib3 as _u3
+            _u3.disable_warnings()
+            token = self._conn.auth_token
+            glance_url = self._conn.endpoint_for("image")
+            url = f"{glance_url}/v2/images/{image.id}/file"
+            r = _req.put(url, data=fh,
+                headers={"X-Auth-Token": token, "Content-Type": "application/octet-stream"},
+                verify=self.config.get("ssl_verify", False))
+            r.raise_for_status()
+        # Attendre que l image soit active
+        import time as _time
+        for _ in range(120):
+            img = self._conn.image.get_image(image.id)
+            if img.status == "active": break
+            if img.status == "killed": raise Exception(f"Image {image.id} en erreur")
+            _time.sleep(5)
         logger.info(f"[RHOSP] Image active: {image.id}")
         return image.id
 
@@ -139,19 +152,19 @@ class RedHatAdapter(BaseOpenStackAdapter):
     ) -> OpenStackVolume:
         self._require_connection("create_volume_from_image")
 
-        vtype = volume_type or self._rh_config.get("volume_type", "ceph")
+        vtype = volume_type or self._rh_config.get("volume_type") or None
         logger.info(f"[RHOSP] Creating volume '{volume_name}' ({size_gb}GB, type={vtype})")
 
-        vol = self._conn.block_storage.create_volume(
-            name=volume_name,
-            size=size_gb,
-            volume_type=vtype,
-            image_id=image_id,
-        )
+        vol_kwargs = dict(name=volume_name, size=size_gb, image_id=image_id)
+        if vtype:
+            vol_kwargs["volume_type"] = vtype
+        vol = self._conn.block_storage.create_volume(**vol_kwargs)
         self._conn.block_storage.wait_for_status(
             vol, status="available", failures=["error"], interval=10, wait=600
         )
         logger.info(f"[RHOSP] Volume ready: {vol.id}")
+        if bootable:
+            self._conn.block_storage.set_volume_bootable_status(vol.id, True)
         return OpenStackVolume(
             volume_id=vol.id,
             name=volume_name,
@@ -261,7 +274,7 @@ class RedHatAdapter(BaseOpenStackAdapter):
             "networks":                networks,
             "block_device_mapping_v2": bdm,
             "availability_zone":       az,
-            "user_data":               conversion.user_data or None,
+            # user_data omis si None
             "metadata": {
                 "migrated_from": "vmware",
                 "source_uuid":   vm.instance_uuid,

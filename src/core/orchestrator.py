@@ -254,24 +254,113 @@ class MigrationOrchestrator:
         finally:
             self.extractor.disconnect()
 
+    def _download_vmdk(self, job, vm):
+        import requests, os, time, urllib3
+        urllib3.disable_warnings()
+        from pyVmomi import vim
+        job.log("Download VMDK", f"Demarrage NFC: {vm.name}", LogLevel.INFO, "extractor")
+        dest = os.path.join(self.workspace_dir, f"{vm.name}.vmdk")
+        os.makedirs(self.workspace_dir, exist_ok=True)
+        self.extractor.connect()
+        try:
+            content = self.extractor._content
+            container = content.viewManager.CreateContainerView(content.rootFolder, [vim.VirtualMachine], True)
+            vm_mo = next((v for v in container.view if v.name == vm.name), None)
+            container.Destroy()
+            if not vm_mo:
+                raise PipelineError("DOWNLOAD", f"VM {vm.name} introuvable")
+            lease = vm_mo.ExportVm()
+            for _ in range(60):
+                if lease.state == "ready": break
+                elif lease.state == "error": raise PipelineError("DOWNLOAD", str(lease.error))
+                time.sleep(1)
+            if lease.state != "ready":
+                raise PipelineError("DOWNLOAD", "Lease timeout")
+            vmdk_url = None
+            max_size = 0
+            for du in lease.info.deviceUrl:
+                print(f"  DeviceURL: {du.url} size={du.fileSize}")
+                if du.url.endswith(".vmdk"):
+                    size = du.fileSize or 0
+                    if size > max_size or vmdk_url is None:
+                        vmdk_url = du.url
+                        max_size = size
+            if not vmdk_url:
+                lease.HttpNfcLeaseAbort()
+                raise PipelineError("DOWNLOAD", "URL VMDK introuvable")
+            job.log("NFC URL", f"{vmdk_url} ({max_size//(1024**2)}MB)", LogLevel.INFO, "extractor")
+            import threading
+            keep_alive = [True]
+            def heartbeat():
+                while keep_alive[0]:
+                    try:
+                        lease.HttpNfcLeaseProgress(50)
+                    except Exception:
+                        pass
+                    time.sleep(30)
+            t = threading.Thread(target=heartbeat, daemon=True)
+            t.start()
+
+            try:
+                with requests.get(vmdk_url, auth=(self.extractor.username, self.extractor.password), verify=False, stream=True, timeout=7200) as r:
+                    r.raise_for_status()
+                    total = int(r.headers.get("content-length", 0)) or max_size
+                    downloaded = 0
+                    with open(dest, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8*1024*1024):
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if downloaded % (50*1024*1024) < 8*1024*1024:
+                                pct = (downloaded*100//total) if total else 0
+                                job.log("Download", f"{pct}% {downloaded//(1024**2)}MB/{total//(1024**2)}MB", LogLevel.INFO, "extractor")
+                                if total:
+                                    lease.HttpNfcLeaseProgress(pct)
+            finally:
+                keep_alive[0] = False
+
+            lease.HttpNfcLeaseComplete()
+            job.log("Download OK", f"{dest} ({os.path.getsize(dest)//(1024**2)}MB)", LogLevel.INFO, "extractor")
+            return dest
+        finally:
+            self.extractor.disconnect()
+
     def _phase_convert(self, job: MigrationJob, adapter: BaseOpenStackAdapter) -> None:
         try:
             vm = job.source_vm
-
-            issues = self.converter.analyze_compatibility(vm)
-            blockers = [x for x in issues if x.startswith("[BLOCKER]")]
-            warnings = [x for x in issues if not x.startswith("[BLOCKER]")]
-
-            for w in warnings:
-                job.log("Compatibility warning", w, LogLevel.WARNING, "converter")
-
-            if blockers:
-                raise PipelineError(
-                    "CONVERT",
-                    f"{len(blockers)} blocker(s): {' | '.join(blockers)}"
-                )
-
-            result = self.converter.run(vm, self.workspace_dir)
+            # Nouveau VMConverter avec injection VirtIO
+            import os
+            vmdk_path = os.path.join(self.workspace_dir, f"{vm.name}.vmdk")
+            # En dry_run le VMDK n'a pas besoin d'exister
+            job_dry_run = getattr(job, 'dry_run', self.dry_run)
+            if not job_dry_run and not os.path.exists(vmdk_path):
+                vmdk_path = self._download_vmdk(job, vm)
+            conv_result = self.converter.convert(
+                vmdk_path=vmdk_path,
+                vm_name=vm.name,
+                dry_run=job_dry_run,
+            )
+            if not conv_result.success:
+                raise PipelineError("CONVERT", " | ".join(conv_result.errors))
+            for w in conv_result.warnings:
+                job.log("Warning", w, LogLevel.WARNING, "converter")
+            job.log("Conversion OK",
+                f"OS={conv_result.guest_os.value} VirtIO={conv_result.virtio_injected}",
+                LogLevel.INFO, "converter")
+            from src.core.models import ConversionResult as CR, ConvertedDisk, OpenStackFlavorSpec
+            result = CR(source_vm=vm)
+            if conv_result.qcow2_path:
+                d = ConvertedDisk(source_disk=vm.disks[0] if vm.disks else __import__('src.core.models', fromlist=['VMwareDisk']).VMwareDisk(label='Hard disk 1', size_gb=conv_result.disk_size_gb))
+                d.qcow2_path = conv_result.qcow2_path
+                d.actual_size_gb = conv_result.disk_size_gb
+                result.converted_disks = [d]
+            # Connecter adapter avant resolution reseau
+            try:
+                adapter.connect()
+            except Exception:
+                pass
+            result.network_mappings = adapter.resolve_network_mappings(
+                getattr(vm, "networks", [])
+            )
 
             # Network resolution is adapter-specific — done here so converter stays generic
             result.network_mappings = adapter.resolve_network_mappings(

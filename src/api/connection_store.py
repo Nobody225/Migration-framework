@@ -244,7 +244,7 @@ class OpenStackConnection:
         elif self.os_type == "redhat":
             base["redhat"] = {
                 "availability_zone": self.availability_zone,
-                "volume_type":       self.volume_type or "ceph",
+                "volume_type":       self.volume_type or "",
             }
         else:
             base["custom"] = {

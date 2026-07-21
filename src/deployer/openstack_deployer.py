@@ -118,12 +118,26 @@ class OpenStackDeployer:
 
         ts         = datetime.now().strftime("%Y%m%d%H%M%S")
         image_name = f"migration-{vm_name}-boot-{ts}"
-        size_gb    = max(1, int(boot_disk.original_size_gb))
+        # Taille dynamique : virtual_size Glance > actual > original > fallback
+        try:
+            img_info = adapter._conn.image.get_image(image_id)
+            vs = img_info.get("virtual_size") or img_info.get("size") or 0
+            virtual_gb = max(1, int(vs / (1024**3))) if vs else 0
+        except Exception:
+            virtual_gb = 0
+        actual_gb = int(boot_disk.actual_size_gb or 0)
+        original_gb = int(boot_disk.original_size_gb or 0)
+        # Ajouter 20% de marge pour tenir compte de la taille virtuelle
+        size_gb = max(virtual_gb, actual_gb, original_gb, 10)
+        if size_gb < 16 and virtual_gb == 0:
+            size_gb = 20  # fallback securise
 
         logger.info(f"[Deployer] Uploading boot image '{image_name}'")
         image_id = adapter.upload_image(
             qcow2_path=boot_disk.qcow2_path,
             image_name=image_name,
+            disk_format="qcow2",
+            container_format="bare",
         )
 
         logger.info(f"[Deployer] Creating boot volume ({size_gb}GB) from {image_id}")
@@ -154,6 +168,8 @@ class OpenStackDeployer:
             image_id = adapter.upload_image(
                 qcow2_path=disk.qcow2_path,
                 image_name=image_name,
+                disk_format="qcow2",
+                container_format="bare",
             )
             vol = adapter.create_volume_from_image(
                 image_id=image_id,

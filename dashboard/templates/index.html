@@ -1359,7 +1359,9 @@ async function checkTargetOS(){
   const badge=document.getElementById('os-target-badge');
   badge.innerHTML='<span style="color:var(--am);">Vérification…</span>';
   try{
-    const d=await api('/api/v1/openstack/'+target+'/status');
+    const r2=await fetch('/api/v1/connections/openstack/'+target+'/retest',{method:'POST',headers:authHeaders()});
+    const d=await r2.json();
+    d.status = d.success ? 'ok' : 'error'; d.latency_ms = 0;
     osStatuses[target]=d;
     badge.innerHTML=d.status==='ok'
       ?`<span style="color:var(--gr);font-weight:700;">✓ Opérationnel — ${d.latency_ms}ms</span>`
@@ -1381,7 +1383,9 @@ function updateOSStatusBadge(){
 async function startMigration(){
   const raw=document.getElementById('f-vms').value.trim();
   if(!raw){toast('Entrez au moins un nom de VM','error');return;}
-  const body={vms:raw.split(',').map(s=>s.trim()).filter(Boolean),target:document.getElementById('f-target').value,mode:document.getElementById('f-mode').value,operator:document.getElementById('f-op').value.trim()||'dashboard',dry_run:document.getElementById('f-dry').checked,skip_evaluation:document.getElementById('f-skip').checked,parallel:document.getElementById('f-par').checked};
+  const osId=document.getElementById('f-target').value;
+  const vcId=document.getElementById('f-vc').value;
+  const body={vms:raw.split(',').map(s=>s.trim()).filter(Boolean),target:'custom',openstack_id:osId,vcenter_id:vcId,mode:document.getElementById('f-mode').value,operator:document.getElementById('f-op').value.trim()||'dashboard',dry_run:document.getElementById('f-dry').checked,skip_evaluation:document.getElementById('f-skip').checked,parallel:document.getElementById('f-par').checked};
   // Vérifier status OS avant de lancer
   const tgt=body.target;
   if(osStatuses[tgt]?.status==='error'){if(!confirm(`⚠ ${tgt} semble indisponible. Continuer quand même ?`))return;}
